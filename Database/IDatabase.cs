@@ -32,9 +32,11 @@ namespace csharp_api.Database
         Task RegisterUser(string userId, string name);
         Task CreateLobby(Metadata lobbyInfo);
         Task<Metadata> GetLobbyByCode(string lobbyCode);
-        Task CloseLobbyByAdmin(string lobbyCode);
-        Task<List<LobbyPlayer>> GetLobbyPlayers(string lobbyCode);
-        Task PlayerJoinLobby(string lobbyCode, Profile userProfile);
-        Task PlayerLeaveLobby(string lobbyCode, string userId);
+        Task LobbyCloseByAdmin(string lobbyCode);
+        Task<List<LobbyPlayer>> LobbyGetPlayers(string lobbyCode);
+        Task LobbyPlayerJoin(string lobbyCode, Profile userProfile);
+        Task LobbyPlayerLeave(string lobbyCode, string userId);
+        Task LobbyPlayerSetReady(string lobbyCode, string userId);
+        Task LobbyPlayerSetUnready(string lobbyCode, string userId);
     }
 }

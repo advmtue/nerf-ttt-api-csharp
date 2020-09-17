@@ -60,9 +60,11 @@ namespace csharp_api.Services
                 {
                     available = true;
                 }
-
-                Console.WriteLine("[LobbyService] Ignored code with collision = " + code);
-                attempts++;
+                else
+                {
+                    Console.WriteLine("[LobbyService] Ignored code with collision = " + code);
+                    attempts++;
+                }
             }
 
             // Couldn't find a valid code in the pool
@@ -72,7 +74,7 @@ namespace csharp_api.Services
             }
 
             // Found a valid code, add it to the list of used codes
-            Console.WriteLine("[LobbyService] Selected room code = " + code);
+            Console.WriteLine($"[LobbyService] Code = {code}, Attempts = {attempts}");
             _usedLobbyCodes.Add(code);
 
             // Build a lobby object
@@ -91,25 +93,39 @@ namespace csharp_api.Services
 
         public async Task CloseLobbyByAdmin(string code)
         {
-            await _database.CloseLobbyByAdmin(code);
+            await _database.LobbyCloseByAdmin(code);
 
             this._usedLobbyCodes.Remove(code);
         }
 
         public async Task<List<LobbyPlayer>> GetLobbyPlayers(string lobbyCode)
         {
-            return await _database.GetLobbyPlayers(lobbyCode);
+            return await _database.LobbyGetPlayers(lobbyCode);
         }
 
         public async Task PlayerJoinLobby(string lobbyCode, string userId)
         {
+            // TODO Check lobby status
             Profile userProfile = await _database.GetUserById(userId);
-            await _database.PlayerJoinLobby(lobbyCode, userProfile);
+            await _database.LobbyPlayerJoin(lobbyCode, userProfile);
         }
 
         public async Task PlayerLeaveLobby(string lobbyCode, string userId)
         {
-            await _database.PlayerLeaveLobby(lobbyCode, userId);
+            // TODO Check lobby status
+            await _database.LobbyPlayerLeave(lobbyCode, userId);
+        }
+
+        public async Task PlayerSetReady(string lobbyCode, string userId)
+        {
+            // TODO Check lobby status
+            await _database.LobbyPlayerSetReady(lobbyCode, userId);
+        }
+
+        public async Task PlayerSetUnready(string lobbyCode, string userId)
+        {
+            // TODO Check lobby status
+            await _database.LobbyPlayerSetUnready(lobbyCode, userId);
         }
     }
 }

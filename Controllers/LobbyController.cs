@@ -130,5 +130,39 @@ namespace csharp_api.Controllers
                 return BadRequest(new APIError("An unknown error occurred", "ERR_UNKNONW"));
             }
         }
+
+        [Authorize(Policy = "UserOnly")]
+        [HttpGet("{code}/ready")]
+        public async Task<IActionResult> PlayerSetReady([FromRoute] string code)
+        {
+            string userId = HttpContext.User.Identity.Name;
+
+            try
+            {
+                await _lobbyService.PlayerSetReady(code, userId);
+                return Ok(new { success = true });
+            }
+            catch (Exception)
+            {
+                return BadRequest(new APIError("An unknown error occurred", "ERR_UNKNOWN"));
+            }
+        }
+
+        [Authorize(Policy = "UserOnly")]
+        [HttpGet("{code}/unready")]
+        public async Task<IActionResult> PlayerSetUnready([FromRoute] string code)
+        {
+            string userId = HttpContext.User.Identity.Name;
+
+            try
+            {
+                await _lobbyService.PlayerSetUnready(code, userId);
+                return Ok(new { success = true });
+            }
+            catch (Exception)
+            {
+                return BadRequest(new APIError("An unknown error occurred", "ERR_UNKNOWN"));
+            }
+        }
     }
 }

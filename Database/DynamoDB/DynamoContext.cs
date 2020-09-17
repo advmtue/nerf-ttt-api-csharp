@@ -212,7 +212,7 @@ namespace csharp_api.Database.DynamoDB
             return new Metadata(item.Item);
         }
 
-        public async Task CloseLobbyByAdmin(string lobbyCode)
+        public async Task LobbyCloseByAdmin(string lobbyCode)
         {
             // Delete that bad boy
             DeleteItemRequest deleteLobbyRequest = new DeleteItemRequest()
@@ -227,7 +227,7 @@ namespace csharp_api.Database.DynamoDB
             await _client.DeleteItemAsync(deleteLobbyRequest);
         }
 
-        public async Task<List<LobbyPlayer>> GetLobbyPlayers(string lobbyCode)
+        public async Task<List<LobbyPlayer>> LobbyGetPlayers(string lobbyCode)
         {
             QueryRequest playerQuery = new QueryRequest()
             {
@@ -251,8 +251,9 @@ namespace csharp_api.Database.DynamoDB
             return players;
         }
 
-        public async Task PlayerJoinLobby(string lobbyCode, Profile userProfile)
+        public async Task LobbyPlayerJoin(string lobbyCode, Profile userProfile)
         {
+            // Todo check game status
             PutItemRequest addPlayerRequest = new PutItemRequest()
             {
                 TableName = _tableName,
@@ -286,7 +287,7 @@ namespace csharp_api.Database.DynamoDB
             await _client.UpdateItemAsync(increasePlayerCountRequest);
         }
 
-        public async Task PlayerLeaveLobby(string lobbyCode, string userId)
+        public async Task LobbyPlayerLeave(string lobbyCode, string userId)
         {
             // TODO Check game status
 
@@ -317,6 +318,46 @@ namespace csharp_api.Database.DynamoDB
 
             await _client.DeleteItemAsync(removePlayerRequest);
             await _client.UpdateItemAsync(decreasePlayerCountRequest);
+        }
+
+        public async Task LobbyPlayerSetReady(string lobbyCode, string userId)
+        {
+            // TODO Check lobby status
+
+            UpdateItemRequest playerReadyRequest = new UpdateItemRequest
+            {
+                TableName = _tableName,
+                Key = new Dictionary<string, AttributeValue> {
+                    { "pk", new AttributeValue { S = $"LOBBY#{lobbyCode}"}},
+                    { "sk", new AttributeValue { S = $"PLAYER#{userId}"}}
+                },
+                UpdateExpression = "SET ready = :true",
+                ExpressionAttributeValues = new Dictionary<string, AttributeValue> {
+                    { ":true", new AttributeValue { BOOL = true } }
+                }
+            };
+
+            await _client.UpdateItemAsync(playerReadyRequest);
+        }
+
+        public async Task LobbyPlayerSetUnready(string lobbyCode, string userId)
+        {
+            // TODO Check lobby status
+
+            UpdateItemRequest playerReadyRequest = new UpdateItemRequest
+            {
+                TableName = _tableName,
+                Key = new Dictionary<string, AttributeValue> {
+                    { "pk", new AttributeValue { S = $"LOBBY#{lobbyCode}"}},
+                    { "sk", new AttributeValue { S = $"PLAYER#{userId}"}}
+                },
+                UpdateExpression = "SET ready = :false",
+                ExpressionAttributeValues = new Dictionary<string, AttributeValue> {
+                    { ":false", new AttributeValue { BOOL = false } }
+                }
+            };
+
+            await _client.UpdateItemAsync(playerReadyRequest);
         }
     }
 }

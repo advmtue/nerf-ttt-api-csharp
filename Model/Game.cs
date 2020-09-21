@@ -1,5 +1,8 @@
+using System;
+using System.Collections.Generic;
 using System.Text.Json.Serialization;
 using csharp_api.Model.Lobby;
+using Amazon.DynamoDBv2.Model;
 
 namespace csharp_api.Model.Game
 {
@@ -34,6 +37,24 @@ namespace csharp_api.Model.Game
 
         [JsonPropertyName("lobbyCode")]
         public string LobbyCode { get; set; }
+
+        public GameMetadata() { }
+
+        public GameMetadata(Dictionary<string, AttributeValue> item)
+        {
+            this.Name = item["name"].S;
+            this.GameId = item["pk"].S.Split("#")[1];
+            this.DateLaunched = item["dateLaunched"].N;
+            this.Status = item["status"].S;
+            this.OwnerName = item["ownerName"].S;
+            this.OwnerId = item["ownerId"].S;
+            this.LobbyCode = item["lobbyCode"].S;
+
+            // May be null
+            this.DateStarted = item.ContainsKey("dateStarted") ? item["dateStarted"].N : null;
+            this.DateEnded = item.ContainsKey("dateEnded") ? item["dateEnded"].N : null;
+            this.WinningTeam = item.ContainsKey("winningTeam") ? item["winningTeam"].S : null;
+        }
     }
 
     public class GamePlayer
@@ -59,6 +80,22 @@ namespace csharp_api.Model.Game
         [JsonPropertyName("lastScanTime")]
         public string LastScanTime { get; set; }
 
+        public GamePlayer() {}
+
+        public GamePlayer Clone()
+        {
+            return new GamePlayer
+            {
+                UserId = this.UserId,
+                DisplayName = this.DisplayName,
+                Role = this.Role,
+                IsAlive = this.IsAlive,
+                AnalyzerCode = this.AnalyzerCode,
+                ScansRemaining = this.ScansRemaining,
+                LastScanTime = this.LastScanTime
+            };
+        }
+
         public GamePlayer(LobbyPlayer lobbyPlayer, string role, string analyzerCode)
         {
             this.UserId = lobbyPlayer.UserId;
@@ -71,9 +108,57 @@ namespace csharp_api.Model.Game
             if (this.Role == "DETECTIVE")
             {
                 this.ScansRemaining = 2;
-            } else {
+            }
+            else
+            {
                 this.ScansRemaining = 0;
             }
         }
+
+        public GamePlayer(Dictionary<string, AttributeValue> item)
+        {
+            this.UserId = item["sk"].S.Split("#")[1];
+            this.DisplayName = item["displayName"].S;
+            this.Role = item["role"].S;
+            this.IsAlive = item["isAlive"].BOOL;
+            this.AnalyzerCode = item["analyzerCode"].S;
+            this.ScansRemaining = item.ContainsKey("scansRemaining") ? Int32.Parse(item["scansRemaining"].N) : 0;
+            this.LastScanTime = item.ContainsKey("lastScanTime") ? item["lastScanTime"].S : null;
+        }
+    }
+
+    public class GamePlayerBasic
+    {
+        [JsonPropertyName("name")]
+        public string Name { get; set; }
+
+        [JsonPropertyName("role")]
+        public string Role { get; set; }
+
+        public GamePlayerBasic(string name, string role) {
+            Name = name;
+            Role = role;
+        }
+    }
+
+    public class GamePlayerInfo
+    {
+
+        [JsonPropertyName("role")]
+        public string Role { get; set; }
+
+        [JsonPropertyName("analyzerCode")]
+        public string AnalyzerCode { get; set; }
+
+        [JsonPropertyName("scansRemaining")]
+        public int ScansRemaining { get; set; }
+
+        [JsonPropertyName("lastScanTime")]
+        public string LastScanTime { get; set; }
+
+        [JsonPropertyName("knownRoles")]
+        public List<GamePlayerBasic> KnownRoles { get; set; }
+
+        public GamePlayerInfo() {}
     }
 }

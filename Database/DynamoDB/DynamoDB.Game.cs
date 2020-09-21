@@ -71,7 +71,8 @@ namespace csharp_api.Database.DynamoDB
             // Update lobby status
             batchWriteItemRequest.TransactItems.Add(new TransactWriteItem
             {
-                Update = new Update {
+                Update = new Update
+                {
                     Key = new Dictionary<string, AttributeValue> {
                         { "pk", new AttributeValue($"LOBBY#{lobbyInfo.Code}") },
                         { "sk", new AttributeValue("metadata") }
@@ -93,6 +94,49 @@ namespace csharp_api.Database.DynamoDB
             await _client.TransactWriteItemsAsync(batchWriteItemRequest);
 
             return newGame;
+        }
+
+        public async Task<GameMetadata> GetGameById(string gameId)
+        {
+            GetItemResponse game = await _client.GetItemAsync(new GetItemRequest
+            {
+                Key = new Dictionary<string, AttributeValue>
+                {
+                    { "pk", new AttributeValue($"GAME#{gameId}") },
+                    { "sk", new AttributeValue("metadata") }
+                },
+                TableName = _tableName
+            });
+
+            // Couldn't find game
+            if (!game.IsItemSet)
+            {
+                throw new GameNotFoundException();
+            }
+
+            return new GameMetadata(game.Item);
+        }
+
+        public async Task<List<GamePlayer>> GetGamePlayers(string gameId)
+        {
+            QueryResponse playerQuery = await _client.QueryAsync(new QueryRequest
+            {
+                TableName = _tableName,
+                KeyConditionExpression = "pk = :gameId AND begins_with(sk, :player)",
+                ExpressionAttributeValues = new Dictionary<string, AttributeValue> {
+                    { ":gameId", new AttributeValue($"GAME#{gameId}") },
+                    { ":player", new AttributeValue("PLAYER#") }
+                }
+            });
+
+            List<GamePlayer> gamePlayers = new List<GamePlayer>();
+
+            foreach (Dictionary<string, AttributeValue> item in playerQuery.Items)
+            {
+               gamePlayers.Add(new GamePlayer(item)); 
+            }
+
+            return gamePlayers;
         }
     }
 }

@@ -7,8 +7,6 @@ using csharp_api.Database;
 using csharp_api.Services;
 using csharp_api.Services.Discord;
 using csharp_api.Model.User;
-using csharp_api.Model.User.Discord;
-using csharp_api.Transfer.Response.Discord;
 
 using csharp_api.Transfer.Response.Error;
 using csharp_api.Transfer.Request.Token;

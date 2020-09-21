@@ -8,20 +8,10 @@ using csharp_api.Model.Game;
 
 namespace csharp_api.Database
 {
-    public class DefaultDatabaseException : Exception
-    {
-        public DefaultDatabaseException() { }
-    }
-
-    public class UserNotFoundException : Exception
-    {
-        public UserNotFoundException() { }
-    }
-
-    public class LobbyNotFoundException : Exception
-    {
-        public LobbyNotFoundException() { }
-    }
+    public class DefaultDatabaseException : Exception {}
+    public class UserNotFoundException : Exception {}
+    public class LobbyNotFoundException : Exception {}
+    public class GameNotFoundException : Exception {}
 
 
     public interface IDatabase
@@ -39,5 +29,7 @@ namespace csharp_api.Database
         Task LobbyPlayerSetReady(string lobbyCode, string userId);
         Task LobbyPlayerSetUnready(string lobbyCode, string userId);
         Task<GameMetadata> GameCreate(LobbyMetadata lobbyInfo, List<GamePlayer> players);
+        Task<GameMetadata> GetGameById(string gameId);
+        Task<List<GamePlayer>> GetGamePlayers(string gameId);
     }
 }

@@ -56,5 +56,12 @@ namespace csharp_api.Services.Message {
 
       await _client.DeleteAsync(uri);
     }
+
+    public async Task LobbyLaunch(string lobbyCode, string gameId) {
+        var data = JsonSerializer.Serialize(new {gameId = gameId});
+        var uri = $"{_socketURI}/lobby/{lobbyCode}/launched";
+
+        await _MakeRequest(uri, data);
+    }
   }
 }

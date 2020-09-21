@@ -1,59 +1,84 @@
-using System.Collections.Generic;
-using System.Linq;
 using System;
+using System.Collections.Generic;
+using System.Text.Json.Serialization;
 using csharp_api.Model.User;
 using Amazon.DynamoDBv2.Model;
 
 namespace csharp_api.Model.Lobby
 {
-    public class Metadata
+    public class LobbyMetadata
     {
-        public string code { get; set; }
-        public string name { get; set; }
-        public long dateCreated { get; set; }
-        public int roundCount { get; set; }
-        public int playerCount { get; set; }
-        public string ownerName { get; set; }
-        public string ownerId { get; set; }
-        public string status { get; set; }
+        [JsonPropertyName("code")]
+        public string Code { get; set; }
 
-        public Metadata(Profile ownerProfile, string name, string code)
+        [JsonPropertyName("name")]
+        public string Name { get; set; }
+
+        [JsonPropertyName("dateCreated")]
+        public long DateCreated { get; set; }
+
+        [JsonPropertyName("roundCount")]
+        public int RoundCount { get; set; }
+
+        [JsonPropertyName("playerCount")]
+        public int PlayerCount { get; set; }
+
+        [JsonPropertyName("ownerName")]
+        public string OwnerName { get; set; }
+
+        [JsonPropertyName("ownerId")]
+        public string OwnerId { get; set; }
+
+        [JsonPropertyName("status")]
+        public string Status { get; set; }
+
+        [JsonPropertyName("currentGameId")]
+        public string CurrentGameId { get; set; }
+
+        public LobbyMetadata(Profile ownerProfile, string name, string code)
         {
-            this.code = code;
-            this.name = name;
-            this.dateCreated = DateTimeOffset.Now.ToUnixTimeMilliseconds();
-            this.roundCount = 0;
-            this.playerCount = 0;
-            this.ownerName = ownerProfile.DisplayName;
-            this.ownerId = ownerProfile.UserId;
-            this.status = "LOBBY";
+            this.Code = code;
+            this.Name = name;
+            this.DateCreated = DateTimeOffset.Now.ToUnixTimeMilliseconds();
+            this.RoundCount = 0;
+            this.PlayerCount = 0;
+            this.OwnerName = ownerProfile.DisplayName;
+            this.OwnerId = ownerProfile.UserId;
+            this.Status = "LOBBY";
+            this.CurrentGameId = null;
         }
 
         // Create from a query response
-        public Metadata(Dictionary<string, AttributeValue> item)
+        public LobbyMetadata(Dictionary<string, AttributeValue> item)
         {
-            this.code = item["pk"].S.Split("#")[1];
-            this.name = item["name"].S;
-            this.dateCreated = Int64.Parse(item["dateCreated"].N);
-            this.roundCount = Int32.Parse(item["roundCount"].N);
-            this.playerCount = Int32.Parse(item["playerCount"].N);
-            this.ownerId = item["GSI1-SK"].S;
-            this.ownerName = item["ownerName"].S;
-            this.status = item["GSI1-PK"].S;
+            this.Code = item["pk"].S.Split("#")[1];
+            this.Name = item["name"].S;
+            this.DateCreated = Int64.Parse(item["dateCreated"].N);
+            this.RoundCount = Int32.Parse(item["roundCount"].N);
+            this.PlayerCount = Int32.Parse(item["playerCount"].N);
+            this.OwnerId = item["GSI1-SK"].S;
+            this.OwnerName = item["ownerName"].S;
+            this.Status = item["GSI1-PK"].S;
+            this.CurrentGameId = item.ContainsKey("currentGameId") ? item["currentGameId"].S : null;
         }
     }
 
     public class LobbyPlayer
     {
-        public string userId { get; set; }
-        public string displayName { get; set; }
-        public bool ready { get; set; }
+        [JsonPropertyName("userId")]
+        public string UserId { get; set; }
+
+        [JsonPropertyName("displayName")]
+        public string DisplayName { get; set; }
+
+        [JsonPropertyName("ready")]
+        public bool IsReady { get; set; }
 
         public LobbyPlayer(Dictionary<string, AttributeValue> item)
         {
-            this.userId = item["userId"].S;
-            this.displayName = item["displayName"].S;
-            this.ready = item["ready"].BOOL;
+            this.UserId = item["userId"].S;
+            this.DisplayName = item["displayName"].S;
+            this.IsReady = item["ready"].BOOL;
         }
     }
 }

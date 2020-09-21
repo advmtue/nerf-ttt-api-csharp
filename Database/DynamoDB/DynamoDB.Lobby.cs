@@ -9,29 +9,29 @@ namespace csharp_api.Database.DynamoDB
 {
     public partial class DynamoDBContext : IDatabase
     {
-        public async Task CreateLobby(Metadata lobbyInfo)
+        public async Task CreateLobby(LobbyMetadata lobbyInfo)
         {
             await _client.PutItemAsync(new PutItemRequest
             {
                 Item = new System.Collections.Generic.Dictionary<string, AttributeValue> {
-                    { "pk", new AttributeValue() { S = $"LOBBY#{lobbyInfo.code}" } },
+                    { "pk", new AttributeValue() { S = $"LOBBY#{lobbyInfo.Code}" } },
                     { "sk", new AttributeValue() { S = "metadata" } },
-                    { "name", new AttributeValue() { S = lobbyInfo.name } },
-                    { "dateCreated", new AttributeValue() { N = lobbyInfo.dateCreated.ToString() } },
-                    { "roundCount", new AttributeValue() { N = lobbyInfo.roundCount.ToString() } },
-                    { "playerCount", new AttributeValue() { N = lobbyInfo.playerCount.ToString() } },
+                    { "name", new AttributeValue() { S = lobbyInfo.Name } },
+                    { "dateCreated", new AttributeValue() { N = lobbyInfo.DateCreated.ToString() } },
+                    { "roundCount", new AttributeValue() { N = lobbyInfo.RoundCount.ToString() } },
+                    { "playerCount", new AttributeValue() { N = lobbyInfo.PlayerCount.ToString() } },
                     // Owner Id
-                    { "GSI1-SK", new AttributeValue() { S = lobbyInfo.ownerId } },
-                    { "ownerName", new AttributeValue() { S = lobbyInfo.ownerName } },
+                    { "GSI1-SK", new AttributeValue() { S = lobbyInfo.OwnerId } },
+                    { "ownerName", new AttributeValue() { S = lobbyInfo.OwnerName } },
                     // Status
-                    { "GSI1-PK", new AttributeValue() { S = lobbyInfo.status } }
+                    { "GSI1-PK", new AttributeValue() { S = lobbyInfo.Status } },
                 },
                 ConditionExpression = "attribute_not_exists(pk)",
                 TableName = _tableName
             });
         }
 
-        public async Task<Metadata> GetLobbyByCode(string lobbyCode)
+        public async Task<LobbyMetadata> GetLobbyByCode(string lobbyCode)
         {
             GetItemResponse item = await _client.GetItemAsync(new GetItemRequest()
             {
@@ -47,7 +47,7 @@ namespace csharp_api.Database.DynamoDB
                 throw new LobbyNotFoundException();
             }
 
-            return new Metadata(item.Item);
+            return new LobbyMetadata(item.Item);
         }
 
         public async Task LobbyCloseByAdmin(string lobbyCode)

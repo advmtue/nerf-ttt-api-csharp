@@ -68,6 +68,7 @@ namespace csharp_api
             services.AddSingleton<UserService, UserService>();
             services.AddSingleton<LobbyService, LobbyService>();
             services.AddSingleton<MessageService, MessageService>();
+            services.AddSingleton<GameService, GameService>();
             services.AddControllers();
         }
 

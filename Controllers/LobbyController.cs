@@ -38,7 +38,7 @@ namespace csharp_api.Controllers
         {
             string userId = HttpContext.User.Identity.Name;
 
-            Metadata lobbyMeta = await _lobbyService.Create(lobbyInfo, userId);
+            LobbyMetadata lobbyMeta = await _lobbyService.Create(lobbyInfo, userId);
 
             return Ok(lobbyMeta);
         }
@@ -47,7 +47,7 @@ namespace csharp_api.Controllers
         [HttpGet("{code}")]
         public async Task<IActionResult> GetByCode([FromRoute] string code)
         {
-            Metadata lobbyMeta;
+            LobbyMetadata lobbyMeta;
             try
             {
                 lobbyMeta = await _lobbyService.GetByCode(code);
@@ -158,6 +158,40 @@ namespace csharp_api.Controllers
             {
                 await _lobbyService.PlayerSetUnready(code, userId);
                 return Ok(new { success = true });
+            }
+            catch (Exception)
+            {
+                return BadRequest(new APIError("An unknown error occurred", "ERR_UNKNOWN"));
+            }
+        }
+
+        [Authorize(Policy = "UserOnly")]
+        [HttpGet("{code}/start")]
+        public async Task<IActionResult> Start([FromRoute] string code)
+        {
+            string userId = HttpContext.User.Identity.Name;
+
+            try
+            {
+                var gameCode = await _lobbyService.Start(code, userId);
+
+                return Ok(new { gameId = gameCode });
+            }
+            catch (PlayerNotOwnerException)
+            {
+                return BadRequest(new APIError("You are not the lobby owner", "ERR_NOT_OWNER"));
+            }
+            catch (LobbyNotStartableException)
+            {
+                return BadRequest(new APIError("Lobby is not in a startable state", "ERR_LOBBY_NOT_STARTABLE"));
+            }
+            catch (MinimumPlayersException)
+            {
+                return BadRequest(new APIError("Minimum player count not met", "ERR_MINIMUM_PLAYERS"));
+            }
+            catch (PlayersNotReadyException)
+            {
+                return BadRequest(new APIError("Some players are not ready", "ERR_PLAYERS_NOT_READY"));
             }
             catch (Exception)
             {

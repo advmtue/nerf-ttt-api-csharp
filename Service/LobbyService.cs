@@ -12,10 +12,11 @@ using csharp_api.Services.Message;
 
 namespace csharp_api.Services
 {
-    public class CodePoolExhaustedException : Exception
-    {
-        public CodePoolExhaustedException() { }
-    }
+    public class CodePoolExhaustedException : Exception { }
+    public class PlayerNotOwnerException : Exception { }
+    public class LobbyNotStartableException : Exception { }
+    public class MinimumPlayersException : Exception { }
+    public class PlayersNotReadyException : Exception { }
 
     // TODO Create interface
     public class LobbyService
@@ -24,11 +25,13 @@ namespace csharp_api.Services
         private IDatabase _database;
         private List<string> _usedLobbyCodes = new List<string>();
         private MessageService _messageService;
+        private GameService _gameService;
 
-        public LobbyService(IDatabase database, MessageService messageService)
+        public LobbyService(IDatabase database, MessageService messageService, GameService gameService)
         {
             _database = database;
             _messageService = messageService;
+            _gameService = gameService;
         }
 
         public static string GenerateCode(int length)
@@ -39,7 +42,7 @@ namespace csharp_api.Services
             return new string(Enumerable.Repeat(letters, length).Select(s => s[random.Next(s.Length)]).ToArray());
         }
 
-        public async Task<Metadata> Create(NewLobbyRequest request, string ownerId)
+        public async Task<LobbyMetadata> Create(NewLobbyRequest request, string ownerId)
         {
             // Lookup the owner
             Profile ownerProfile = await _database.GetUserById(ownerId);
@@ -81,7 +84,7 @@ namespace csharp_api.Services
             _usedLobbyCodes.Add(code);
 
             // Build a lobby object
-            Metadata lobbyInfo = new Metadata(ownerProfile, request.name, code);
+            LobbyMetadata lobbyInfo = new LobbyMetadata(ownerProfile, request.name, code);
 
             // Create a lobby
             await _database.CreateLobby(lobbyInfo);
@@ -89,7 +92,46 @@ namespace csharp_api.Services
             return lobbyInfo;
         }
 
-        public async Task<Metadata> GetByCode(string code)
+        public async Task<string> Start(string code, string callingUserId)
+        {
+            LobbyMetadata lobbyMeta = await _database.GetLobbyByCode(code);
+
+            // Check the owner of the lobby is the calling player
+            if (lobbyMeta.OwnerId != callingUserId)
+            {
+                throw new PlayerNotOwnerException();
+            }
+
+            // Check the lobby status is LOBBY
+            if (lobbyMeta.Status != "LOBBY")
+            {
+                throw new LobbyNotStartableException();
+            }
+
+            // Check that there is at least 3 players
+            if (lobbyMeta.PlayerCount < 0)
+            {
+                throw new MinimumPlayersException();
+            }
+
+            List<LobbyPlayer> players = await _database.LobbyGetPlayers(code);
+
+            // Check that all players are ready
+            var potentialUnreadyPlayer = players.Find(p => !p.IsReady);
+            if (potentialUnreadyPlayer != null)
+            {
+                throw new PlayersNotReadyException();
+            }
+
+            string newGameId = await _gameService.Create(lobbyMeta, players);
+
+            // Let players know the lobby has launched
+            await _messageService.LobbyLaunch(code, newGameId);
+
+            return newGameId;
+        }
+
+        public async Task<LobbyMetadata> GetByCode(string code)
         {
             return await _database.GetLobbyByCode(code);
         }

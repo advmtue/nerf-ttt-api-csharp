@@ -50,5 +50,11 @@ namespace csharp_api.Services.Message {
 
       await _MakeRequest(uri, data);
     }
+
+    public async Task LobbyClose(string lobbyCode) {
+      var uri = $"{_socketURI}/lobby/{lobbyCode}";
+
+      await _client.DeleteAsync(uri);
+    }
   }
 }

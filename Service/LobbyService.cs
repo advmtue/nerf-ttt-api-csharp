@@ -97,6 +97,7 @@ namespace csharp_api.Services
         public async Task CloseLobbyByAdmin(string code)
         {
             await _database.LobbyCloseByAdmin(code);
+            await _messageService.LobbyClose(code);
 
             this._usedLobbyCodes.Remove(code);
         }

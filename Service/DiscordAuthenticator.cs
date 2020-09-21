@@ -53,12 +53,11 @@ namespace csharp_api.Services.Discord
             {
                 // Attempt to pull profile
                 profile = await _database.GetUserByDiscord(discordUser);
-
-                if (profile == null)
-                {
-                    // Create a new user
-                    profile = await _database.CreateUserByDiscord(discordUser);
-                }
+            }
+            catch (UserNotFoundException)
+            {
+                // User doesn't exist, create it
+                profile = await _database.CreateUserByDiscord(discordUser);
             }
             catch (Exception)
             {

@@ -1,39 +1,24 @@
 using System;
 using System.Collections.Generic;
 using Amazon.DynamoDBv2;
+using System.Text.Json.Serialization;
 using Amazon.DynamoDBv2.Model;
 
 namespace csharp_api.Model.User
 {
     public class Profile
     {
+        [JsonPropertyName("userId")]
         public string UserId { get; set; }
+
+        [JsonPropertyName("accessLevel")]
         public string AccessLevel { get; set; }
+
+        [JsonPropertyName("displayName")]
         public string DisplayName { get; set; }
+
+        [JsonPropertyName("joinDate")]
         public string JoinDate { get; set; }
-
-        public PutItemRequest BuildPutRequest()
-        {
-            Dictionary<string, AttributeValue> item = new Dictionary<string, AttributeValue>();
-            item.Add("pk", new AttributeValue($"USER#{UserId}"));
-            item.Add("sk", new AttributeValue("profile"));
-            item.Add("GSI1-PK", new AttributeValue("user"));
-            item.Add("GSI1-SK", new AttributeValue(DisplayName));
-            item.Add("accessLevel", new AttributeValue(AccessLevel));
-            item.Add("joinDate", new AttributeValue() { N = DateTimeOffset.Now.ToUnixTimeSeconds().ToString() });
-
-            return new PutItemRequest() { Item = item };
-        }
-
-        public static GetItemRequest BuildGetRequest(string userId)
-        {
-            Dictionary<string, AttributeValue> key = new Dictionary<string, AttributeValue>() {
-                { "pk", new AttributeValue($"USER#{userId}") },
-                { "sk", new AttributeValue("profile") },
-            };
-
-            return new GetItemRequest() { Key = key };
-        }
 
         public static Profile CreateFromItem(Dictionary<string, AttributeValue> item)
         {

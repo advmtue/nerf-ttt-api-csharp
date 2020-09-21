@@ -11,7 +11,7 @@ namespace csharp_api.Database.DynamoDB
     {
         public async Task CreateLobby(Metadata lobbyInfo)
         {
-            PutItemRequest createLobbyRequest = new PutItemRequest()
+            await _client.PutItemAsync(new PutItemRequest
             {
                 Item = new System.Collections.Generic.Dictionary<string, AttributeValue> {
                     { "pk", new AttributeValue() { S = $"LOBBY#{lobbyInfo.code}" } },
@@ -28,23 +28,19 @@ namespace csharp_api.Database.DynamoDB
                 },
                 ConditionExpression = "attribute_not_exists(pk)",
                 TableName = _tableName
-            };
-
-            await _client.PutItemAsync(createLobbyRequest);
+            });
         }
 
         public async Task<Metadata> GetLobbyByCode(string lobbyCode)
         {
-            GetItemRequest getLobbyRequest = new GetItemRequest()
+            GetItemResponse item = await _client.GetItemAsync(new GetItemRequest()
             {
                 TableName = _tableName,
                 Key = new Dictionary<string, AttributeValue>() {
                     { "pk", new AttributeValue() { S = $"LOBBY#{lobbyCode}"} },
                     { "sk", new AttributeValue() { S = "metadata"} }
                 }
-            };
-
-            GetItemResponse item = await _client.GetItemAsync(getLobbyRequest);
+            });
 
             if (!item.IsItemSet)
             {
@@ -56,22 +52,21 @@ namespace csharp_api.Database.DynamoDB
 
         public async Task LobbyCloseByAdmin(string lobbyCode)
         {
-            // Delete that bad boy
-            DeleteItemRequest deleteLobbyRequest = new DeleteItemRequest()
+            // Delete the lobby
+            await _client.DeleteItemAsync(new DeleteItemRequest()
             {
                 TableName = _tableName,
                 Key = new Dictionary<string, AttributeValue> {
                     { "pk", new AttributeValue() { S = $"LOBBY#{lobbyCode}" } },
                     { "sk", new AttributeValue() { S = "metadata" } },
                 },
-            };
-
-            await _client.DeleteItemAsync(deleteLobbyRequest);
+            });
         }
 
         public async Task<List<LobbyPlayer>> LobbyGetPlayers(string lobbyCode)
         {
-            QueryRequest playerQuery = new QueryRequest()
+            // Pull players
+            QueryResponse playerResponse = await _client.QueryAsync(new QueryRequest()
             {
                 TableName = _tableName,
                 KeyConditionExpression = "pk = :lobbyId AND begins_with(sk, :player)",
@@ -79,10 +74,9 @@ namespace csharp_api.Database.DynamoDB
                     { ":lobbyId", new AttributeValue() { S = $"LOBBY#{lobbyCode}" } },
                     { ":player", new AttributeValue() { S = "PLAYER#" } },
                 }
-            };
+            });
 
-            QueryResponse playerResponse = await _client.QueryAsync(playerQuery);
-
+            // Assemble players into a list
             List<LobbyPlayer> players = new List<LobbyPlayer>();
 
             playerResponse.Items.ForEach(item =>
@@ -95,7 +89,8 @@ namespace csharp_api.Database.DynamoDB
 
         public async Task LobbyPlayerJoin(string lobbyCode, Profile userProfile)
         {
-            // Todo check game status
+            // TODO check game status
+
             PutItemRequest addPlayerRequest = new PutItemRequest()
             {
                 TableName = _tableName,
@@ -125,8 +120,10 @@ namespace csharp_api.Database.DynamoDB
                 UpdateExpression = "SET #playerCount = #playerCount + :incAmount"
             };
 
-            await _client.PutItemAsync(addPlayerRequest);
-            await _client.UpdateItemAsync(increasePlayerCountRequest);
+            Task.WaitAll(
+                _client.PutItemAsync(addPlayerRequest),
+                _client.UpdateItemAsync(increasePlayerCountRequest)
+            );
         }
 
         public async Task LobbyPlayerLeave(string lobbyCode, string userId)

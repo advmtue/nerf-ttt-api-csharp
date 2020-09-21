@@ -1,4 +1,6 @@
+using System.Linq.Expressions;
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using csharp_api.Model.User;
 using csharp_api.Model.User.Discord;
@@ -9,77 +11,79 @@ namespace csharp_api.Database.DynamoDB
 {
     public partial class DynamoDBContext : IDatabase
     {
-        // Todo split into partial
         public async Task<Profile> GetUserByDiscord(DiscordUser discordUser)
         {
-            // Create a GetItemRequest for User
-            GetItemRequest getDiscordLoginRequest = DiscordLogin.BuildGetRequest(discordUser.id);
-            getDiscordLoginRequest.TableName = this._tableName;
-
-            // Perform response
-            GetItemResponse discordLoginResponse;
-            try
+            // Attempt to pull a discord login
+            GetItemResponse discordLoginResponse = await _client.GetItemAsync(new GetItemRequest
             {
-                discordLoginResponse = await this._client.GetItemAsync(getDiscordLoginRequest);
-            }
-            catch (Exception ex)
-            {
-                // TODO Handle database exceptions
-                Console.WriteLine("[Database] Failed to pull discord user");
-                throw ex;
-            }
+                TableName = _tableName,
+                Key = new Dictionary<string, AttributeValue> {
+                   { "pk", new AttributeValue { S = $"DISCORD#{discordUser.id}" } },
+                   { "sk", new AttributeValue { S = "login" } }
+               }
+            });
 
             // User doesn't exist
             if (!discordLoginResponse.IsItemSet)
             {
-                return null;
+                throw new UserNotFoundException();
             }
 
-            // Extract userId
-            string userId = discordLoginResponse.Item["userId"].S;
-
             // Return the user
-            return await GetUserById(userId);
+            try
+            {
+                return await GetUserById(discordLoginResponse.Item["userId"].S);
+            }
+            catch (UserNotFoundException)
+            {
+                // Discord exists but not user profile? This is bad.
+                // FIXME Oh no
+                Console.WriteLine($"[Database] Discord User exists, but profile doesnt! DiscordID = {discordUser.id}");
+                throw new DefaultDatabaseException();
+            }
         }
 
         public async Task<Profile> CreateUserByDiscord(DiscordUser discordUser)
         {
-            // Goal: Create a registration-level user with a 5 minute TTL
-
+            // Generate a brand new user id
             string userId = Guid.NewGuid().ToString();
 
-            // Create a new discord login
-            DiscordLogin newLogin = new DiscordLogin()
+            // Put the discord profile
+            Task putDiscordProfile = _client.PutItemAsync(new PutItemRequest
             {
-                UserId = userId.ToString(),
-                DiscordId = discordUser.id,
-            };
+                TableName = _tableName,
+                Item = new Dictionary<string, AttributeValue> {
+                    { "pk", new AttributeValue { S = $"DISCORD#{discordUser.id}" } },
+                    { "sk", new AttributeValue { S = "login" } },
+                    { "userId", new AttributeValue { S = userId } }
+                },
+                ConditionExpression = "attribute_not_exists(pk)"
+            });
 
-            // Create a sparse profile
-            Profile newProfile = new Profile()
+            // Put the user profile
+            Task putUserProfile = _client.PutItemAsync(new PutItemRequest
+            {
+                TableName = _tableName,
+                Item = new Dictionary<string, AttributeValue> {
+                    { "pk", new AttributeValue($"USER#{userId}") },
+                    { "sk", new AttributeValue("profile") },
+                    { "GSI1-SK", new AttributeValue("Unregistered User") },
+                    { "GSI1-PK", new AttributeValue("user") },
+                    { "accessLevel", new AttributeValue("registration") },
+                    { "joinDate", new AttributeValue { N = DateTimeOffset.Now.ToUnixTimeMilliseconds().ToString() } }
+                },
+                ConditionExpression = "attribute_not_exists(pk)"
+            });
+
+            // Perform insertions
+            Task.WaitAll(putDiscordProfile, putUserProfile);
+
+            Profile newProfile = new Profile
             {
                 UserId = userId,
                 AccessLevel = "registration",
                 DisplayName = "Unregistered User",
             };
-
-            PutItemRequest discordPutRequest = newLogin.BuildPutRequest();
-            PutItemRequest profilePutRequest = newProfile.BuildPutRequest();
-
-            // Assign table name
-            discordPutRequest.TableName = _tableName;
-            profilePutRequest.TableName = _tableName;
-
-            try
-            {
-                await _client.PutItemAsync(discordPutRequest);
-                await _client.PutItemAsync(profilePutRequest);
-            }
-            catch (Exception)
-            {
-                Console.WriteLine("[Database] Failed to insert discord login or profile.");
-                throw new DefaultDatabaseException();
-            }
 
             return newProfile;
         }

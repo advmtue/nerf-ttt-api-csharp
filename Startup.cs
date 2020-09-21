@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 
 using csharp_api.Services;
+using csharp_api.Services.Message;
 using csharp_api.Services.Discord;
 using csharp_api.Database.DynamoDB;
 using csharp_api.Database;
@@ -66,6 +67,7 @@ namespace csharp_api
             services.AddSingleton<TokenManager, TokenManager>();
             services.AddSingleton<UserService, UserService>();
             services.AddSingleton<LobbyService, LobbyService>();
+            services.AddSingleton<MessageService, MessageService>();
             services.AddControllers();
         }
 

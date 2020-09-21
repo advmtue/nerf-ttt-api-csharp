@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using Amazon.DynamoDBv2.Model;
 
@@ -10,33 +11,29 @@ namespace csharp_api.Database.DynamoDB
     {
         public async Task<Profile> GetUserById(string userId)
         {
-            GetItemRequest profileRequest = Profile.BuildGetRequest(userId);
-            profileRequest.TableName = _tableName;
-
-            GetItemResponse profileResponse;
-            try
+            GetItemResponse profileResponse = await _client.GetItemAsync(new GetItemRequest
             {
-                profileResponse = await _client.GetItemAsync(profileRequest);
-            }
-            catch (Exception)
-            {
-                Console.WriteLine("[Database] Failed to lookup user by ID");
-                throw new DefaultDatabaseException();
-            }
+                TableName = _tableName,
+                Key = new Dictionary<string, AttributeValue> {
+                    { "pk", new AttributeValue($"USER#{userId}") },
+                    { "sk", new AttributeValue("profile") }
+                }
+            });
 
             if (!profileResponse.IsItemSet)
             {
-                return null;
+                throw new UserNotFoundException();
             }
-            else
-            {
-                return Profile.CreateFromItem(profileResponse.Item);
-            }
+
+            return Profile.CreateFromItem(profileResponse.Item);
         }
 
         public async Task RegisterUser(string userId, string name)
         {
-            UpdateItemRequest nameUpdateRequest = new UpdateItemRequest()
+            // Set user display name
+            // Set user accessLevel = "user"
+
+            await _client.UpdateItemAsync(new UpdateItemRequest()
             {
                 TableName = _tableName,
                 Key = new System.Collections.Generic.Dictionary<string, AttributeValue> {
@@ -53,17 +50,7 @@ namespace csharp_api.Database.DynamoDB
                     { ":userAccessLevel", new AttributeValue() { S = "user" } },
                     { ":registrationAccessLevel", new AttributeValue() { S = "registration" } }
                 },
-            };
-
-            try
-            {
-                await _client.UpdateItemAsync(nameUpdateRequest);
-            }
-            catch (Exception)
-            {
-                Console.WriteLine("[Database] Failed to update user registration status");
-                throw new DefaultDatabaseException();
-            }
+            });
         }
     }
 }

@@ -8,6 +8,7 @@ using csharp_api.Database;
 using csharp_api.Model.User;
 using csharp_api.Model.Lobby;
 using csharp_api.Controllers;
+using csharp_api.Services.Message;
 
 namespace csharp_api.Services
 {
@@ -22,10 +23,12 @@ namespace csharp_api.Services
 
         private IDatabase _database;
         private List<string> _usedLobbyCodes = new List<string>();
+        private MessageService _messageService;
 
-        public LobbyService(IDatabase database)
+        public LobbyService(IDatabase database, MessageService messageService)
         {
             _database = database;
+            _messageService = messageService;
         }
 
         public static string GenerateCode(int length)
@@ -108,24 +111,28 @@ namespace csharp_api.Services
             // TODO Check lobby status
             Profile userProfile = await _database.GetUserById(userId);
             await _database.LobbyPlayerJoin(lobbyCode, userProfile);
+            await _messageService.LobbyPlayerJoin(lobbyCode, userProfile);
         }
 
         public async Task PlayerLeaveLobby(string lobbyCode, string userId)
         {
             // TODO Check lobby status
             await _database.LobbyPlayerLeave(lobbyCode, userId);
+            await _messageService.LobbyPlayerLeave(lobbyCode, userId);
         }
 
         public async Task PlayerSetReady(string lobbyCode, string userId)
         {
             // TODO Check lobby status
             await _database.LobbyPlayerSetReady(lobbyCode, userId);
+            await _messageService.LobbyPlayerReady(lobbyCode, userId);
         }
 
         public async Task PlayerSetUnready(string lobbyCode, string userId)
         {
             // TODO Check lobby status
             await _database.LobbyPlayerSetUnready(lobbyCode, userId);
+            await _messageService.LobbyPlayerUnready(lobbyCode, userId);
         }
     }
 }

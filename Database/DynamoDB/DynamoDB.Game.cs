@@ -147,6 +147,7 @@ namespace csharp_api.Database.DynamoDB
                     { "pk", new AttributeValue($"GAME#{gameId}" ) },
                     { "sk", new AttributeValue("metadata") },
                 },
+                UpdateExpression = "SET #status = :ingame",
                 ConditionExpression = "#status = :pregame AND #ownerId = :callingPlayerId",
                 ExpressionAttributeNames = new Dictionary<string, string>
                 {
@@ -156,7 +157,8 @@ namespace csharp_api.Database.DynamoDB
                 ExpressionAttributeValues = new Dictionary<string, AttributeValue>
                 {
                     { ":pregame", new AttributeValue("PREGAME") },
-                    { ":callingPlayerId", new AttributeValue(callingPlayerId) }
+                    { ":callingPlayerId", new AttributeValue(callingPlayerId) },
+                    { ":ingame", new AttributeValue("INGAME") }
                 }
             });
         }

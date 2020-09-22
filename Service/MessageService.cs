@@ -63,5 +63,12 @@ namespace csharp_api.Services.Message {
 
         await _MakeRequest(uri, data);
     }
+
+    public async Task GameStart(string gameId) {
+        var data = JsonSerializer.Serialize(new {gameId = gameId});
+        var uri = $"{_socketURI}/game/{gameId}/started";
+
+        await _MakeRequest(uri, data);
+    }
   }
 }

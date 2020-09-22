@@ -43,12 +43,28 @@ namespace csharp_api.Controllers
             try
             {
                 string userId = HttpContext.User.Identity.Name;
-                GamePlayerInfo gameInfo = await _gameService.GetFilteredInfo(gameId, userId);
-
-                return Ok(gameInfo);
+                return Ok(await _gameService.GetFilteredInfo(gameId, userId));
             }
             catch (Exception)
             {
+                return BadRequest(new APIError("An unknown error occurred", "ERR_UNKNOWN"));
+            }
+        }
+
+        [Authorize(Policy = "UserOnly")]
+        [HttpGet("{gameId}/start")]
+        public async Task<IActionResult> StartGame([FromRoute] string gameId)
+        {
+            try
+            {
+                string userId = HttpContext.User.Identity.Name;
+                await _gameService.StartGame(gameId, userId);
+
+                return Ok();
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine($"[GameController] Error: {e.Message}");
                 return BadRequest(new APIError("An unknown error occurred", "ERR_UNKNOWN"));
             }
         }

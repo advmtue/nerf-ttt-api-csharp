@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using csharp_api.Database;
 using csharp_api.Model.Game;
 using csharp_api.Model.Lobby;
+using csharp_api.Services.Message;
 
 namespace csharp_api.Services
 {
@@ -13,13 +14,15 @@ namespace csharp_api.Services
     public class GameService
     {
         private IDatabase _database;
+        private MessageService _messageService;
 
         // Create a cache for game players, since the information doesn't change
         private Dictionary<string, List<GamePlayer>> _gamePlayerCache = new Dictionary<string, List<GamePlayer>>();
 
-        public GameService(IDatabase database)
+        public GameService(IDatabase database, MessageService messageService)
         {
             _database = database;
+            _messageService = messageService;
         }
 
         public async Task<string> Create(LobbyMetadata lobbyInfo, List<LobbyPlayer> players)
@@ -145,6 +148,12 @@ namespace csharp_api.Services
                 LastScanTime = localPlayer.LastScanTime,
                 KnownRoles = gamePlayersBasic
             };
+        }
+
+        public async Task StartGame(string gameId, string callingPlayerId) {
+            // Attempt to start game (ownerId can be checked as condition)
+            await _database.GameStart(gameId, callingPlayerId);
+            await _messageService.GameStart(gameId);
         }
 
         private static List<string> _generateAnalyzerCodes(int length)

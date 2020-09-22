@@ -68,25 +68,26 @@ namespace csharp_api.Database.DynamoDB
 
             // Update lobby status
             await _client.UpdateItemAsync(new UpdateItemRequest
-                {
-                    Key = new Dictionary<string, AttributeValue> {
+            {
+                Key = new Dictionary<string, AttributeValue> {
                         { "pk", new AttributeValue($"LOBBY#{lobbyInfo.Code}") },
                         { "sk", new AttributeValue("metadata") }
                     },
-                    UpdateExpression = "SET #lobbyStatus = :ingame, #currentGameId = :gameId",
-                    ExpressionAttributeNames = new Dictionary<string, string> {
+                UpdateExpression = "SET #lobbyStatus = :ingame, #currentGameId = :gameId",
+                ExpressionAttributeNames = new Dictionary<string, string> {
                         { "#lobbyStatus", "GSI1-PK" },
                         { "#currentGameId", "currentGameId" }
                     },
-                    ExpressionAttributeValues = new Dictionary<string, AttributeValue> {
+                ExpressionAttributeValues = new Dictionary<string, AttributeValue> {
                         { ":ingame", new AttributeValue("INGAME") },
                         { ":gameId", new AttributeValue(newGame.GameId) }
                     },
-                    TableName = _tableName
-                }
+                TableName = _tableName
+            }
             );
 
-            // FIXME Needs review
+            // FIXME Needs review -- Can be implemented as a DoWhile (as per the wiki)
+            // https://docs.aws.amazon.com/sdkfornet1/latest/apidocs/html/M_Amazon_DynamoDB_AmazonDynamoDBClient_BatchWriteItem.htm
             await _client.BatchWriteItemAsync(new Dictionary<string, List<WriteRequest>> {
                 { _tableName, writeRequests }
             });
@@ -131,10 +132,33 @@ namespace csharp_api.Database.DynamoDB
 
             foreach (Dictionary<string, AttributeValue> item in playerQuery.Items)
             {
-               gamePlayers.Add(new GamePlayer(item)); 
+                gamePlayers.Add(new GamePlayer(item));
             }
 
             return gamePlayers;
+        }
+
+        public async Task GameStart(string gameId, string callingPlayerId)
+        {
+            await _client.UpdateItemAsync(new UpdateItemRequest
+            {
+                TableName = _tableName,
+                Key = new Dictionary<string, AttributeValue> {
+                    { "pk", new AttributeValue($"GAME#{gameId}" ) },
+                    { "sk", new AttributeValue("metadata") },
+                },
+                ConditionExpression = "#status = :pregame AND #ownerId = :callingPlayerId",
+                ExpressionAttributeNames = new Dictionary<string, string>
+                {
+                    { "#status", "status" },
+                    { "#ownerId", "ownerId" },
+                },
+                ExpressionAttributeValues = new Dictionary<string, AttributeValue>
+                {
+                    { ":pregame", new AttributeValue("PREGAME") },
+                    { ":callingPlayerId", new AttributeValue(callingPlayerId) }
+                }
+            });
         }
     }
 }

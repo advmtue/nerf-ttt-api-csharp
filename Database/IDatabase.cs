@@ -31,5 +31,6 @@ namespace csharp_api.Database
         Task<GameMetadata> GameCreate(LobbyMetadata lobbyInfo, List<GamePlayer> players);
         Task<GameMetadata> GetGameById(string gameId);
         Task<List<GamePlayer>> GetGamePlayers(string gameId);
+        Task GameStart(string gameId, string callingPlayerId);
     }
 }

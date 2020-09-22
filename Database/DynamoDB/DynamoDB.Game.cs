@@ -24,13 +24,13 @@ namespace csharp_api.Database.DynamoDB
             };
 
             // Build transaction 
-            TransactWriteItemsRequest batchWriteItemRequest = new TransactWriteItemsRequest();
-            batchWriteItemRequest.TransactItems = new List<TransactWriteItem>();
+            BatchWriteItemRequest batchWriteItemRequest = new BatchWriteItemRequest();
+            List<WriteRequest> writeRequests = new List<WriteRequest>();
 
             // Add game metadata
-            batchWriteItemRequest.TransactItems.Add(new TransactWriteItem
+            writeRequests.Add(new WriteRequest
             {
-                Put = new Put
+                PutRequest = new PutRequest
                 {
                     Item = new Dictionary<string, AttributeValue> {
                         { "pk", new AttributeValue($"GAME#{newGame.GameId}") },
@@ -42,16 +42,15 @@ namespace csharp_api.Database.DynamoDB
                         { "ownerId", new AttributeValue(newGame.OwnerId) },
                         { "lobbyCode", new AttributeValue(newGame.LobbyCode) }
                     },
-                    TableName = _tableName,
                 }
             });
 
             // Add player list
             foreach (GamePlayer player in players)
             {
-                batchWriteItemRequest.TransactItems.Add(new TransactWriteItem
+                writeRequests.Add(new WriteRequest
                 {
-                    Put = new Put
+                    PutRequest = new PutRequest
                     {
                         Item = new Dictionary<string, AttributeValue> {
                             { "pk", new AttributeValue($"GAME#{newGame.GameId}") },
@@ -63,15 +62,12 @@ namespace csharp_api.Database.DynamoDB
                             { "scansRemaining", new AttributeValue { N = player.ScansRemaining.ToString() }},
                             { "lastScanTime", new AttributeValue(player.LastScanTime)}
                         },
-                        TableName = _tableName,
                     }
                 });
             }
 
             // Update lobby status
-            batchWriteItemRequest.TransactItems.Add(new TransactWriteItem
-            {
-                Update = new Update
+            await _client.UpdateItemAsync(new UpdateItemRequest
                 {
                     Key = new Dictionary<string, AttributeValue> {
                         { "pk", new AttributeValue($"LOBBY#{lobbyInfo.Code}") },
@@ -88,10 +84,12 @@ namespace csharp_api.Database.DynamoDB
                     },
                     TableName = _tableName
                 }
-            });
+            );
 
-            // FIXME This won't be able to transact more than ~20 players at a time. Find a workaround (or pagination)
-            await _client.TransactWriteItemsAsync(batchWriteItemRequest);
+            // FIXME Needs review
+            await _client.BatchWriteItemAsync(new Dictionary<string, List<WriteRequest>> {
+                { _tableName, writeRequests }
+            });
 
             return newGame;
         }

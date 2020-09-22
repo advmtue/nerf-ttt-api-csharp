@@ -109,36 +109,31 @@ namespace csharp_api.Services
                 throw new PlayerNotInGameException();
             }
 
-            // Filter list
-            gamePlayerCopy = gamePlayerCopy.FindAll(player =>
+            // TODO Create classes for roles with static methods to handle canSeeRole
+            // also filters out localPlayer
+            List<GamePlayerBasic> gamePlayersBasic = gamePlayerCopy.FindAll(p => p.UserId != localPlayer.UserId)
+            .Select(player =>
             {
-                if (player.Role == "INNOCENT")
+                if (player.UserId == localPlayer.UserId)
                 {
-                    return false;
-                }
-                else if (player.UserId == localPlayer.UserId)
-                {
-                    return false;
+                    // Localplayer can always see their own role
                 }
                 else if (player.Role == localPlayer.Role)
                 {
-                    return true;
+                    // Localplayer can see their own team
                 }
                 else if (player.Role == "DETECTIVE")
                 {
-                    return true;
+                    // Everyone can see detective
                 }
                 else
                 {
-                    return false;
+                    player.Role = "INNOCENT";
                 }
-            });
 
-            List<GamePlayerBasic> gamePlayersBasic = new List<GamePlayerBasic>();
-            foreach (GamePlayer player in gamePlayerCopy)
-            {
-                gamePlayersBasic.Add(new GamePlayerBasic(player.DisplayName, player.Role));
-            }
+                return new GamePlayerBasic(player.DisplayName, player.Role);
+            }).ToList();
+
 
             return new GamePlayerInfo
             {
@@ -150,7 +145,8 @@ namespace csharp_api.Services
             };
         }
 
-        public async Task StartGame(string gameId, string callingPlayerId) {
+        public async Task StartGame(string gameId, string callingPlayerId)
+        {
             // Attempt to start game (ownerId can be checked as condition)
             await _database.GameStart(gameId, callingPlayerId);
             await _messageService.GameStart(gameId);

@@ -27,6 +27,11 @@ RUN dotnet publish -c Production -o /app --no-restore
 # Deploy
 FROM mcr.microsoft.com/dotnet/core/aspnet:3.1
 
+# AWS Credentials
+RUN mkdir -p ~/.aws
+COPY awscredentials /root/.aws/credentials
+COPY awsconfig /root/.aws/config
+
 WORKDIR /app
 COPY --from=build /app .
 

@@ -193,8 +193,9 @@ namespace csharp_api.Controllers
             {
                 return BadRequest(new APIError("Some players are not ready", "ERR_PLAYERS_NOT_READY"));
             }
-            catch (Exception)
+            catch (Exception e)
             {
+                Console.WriteLine($"[LobbyController] Exception :{e.Message}");
                 return BadRequest(new APIError("An unknown error occurred", "ERR_UNKNOWN"));
             }
         }

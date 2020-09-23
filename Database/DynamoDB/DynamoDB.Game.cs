@@ -93,7 +93,7 @@ namespace csharp_api.Database.DynamoDB
                 {
                     { ":callingPlayerId", new AttributeValue(callingPlayerId) },
                     { ":lobby", new AttributeValue("LOBBY") },
-                    { ":ingame", new AttributeValue("INGAME") }
+                    { ":ingame", new AttributeValue("PREGAME") }
                 },
                 UpdateExpression = "SET #status = :ingame",
                 TableName = _tableName

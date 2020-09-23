@@ -42,7 +42,7 @@ namespace csharp_api.Services
             return new string(Enumerable.Repeat(letters, length).Select(s => s[random.Next(s.Length)]).ToArray());
         }
 
-        public async Task<LobbyMetadata> Create(NewLobbyRequest request, string ownerId)
+        public async Task<LobbyMetadata> Create(string ownerId)
         {
             // Lookup the owner
             Profile ownerProfile = await _database.GetUserById(ownerId);
@@ -78,7 +78,7 @@ namespace csharp_api.Services
             _usedLobbyCodes.Add(code);
 
             // Build a lobby object
-            LobbyMetadata lobbyInfo = new LobbyMetadata(ownerProfile, request.name, code);
+            LobbyMetadata lobbyInfo = new LobbyMetadata(ownerProfile, code);
 
             // Create a lobby
             await _database.CreateLobby(lobbyInfo);

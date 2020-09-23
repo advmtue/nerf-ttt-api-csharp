@@ -14,11 +14,6 @@ using csharp_api.Transfer.Response.Error;
 
 namespace csharp_api.Controllers
 {
-    public class NewLobbyRequest
-    {
-        public string name { get; set; }
-    }
-
     [ApiController]
     [Route("lobby")]
     public class LobbyController : ControllerBase
@@ -34,13 +29,13 @@ namespace csharp_api.Controllers
 
         [Authorize(Policy = "UserOnly")]
         [HttpPost]
-        public async Task<IActionResult> CreateNewLobby([FromBody] NewLobbyRequest lobbyInfo)
+        public async Task<IActionResult> CreateNewLobby()
         {
             string userId = HttpContext.User.Identity.Name;
 
             try
             {
-                return Ok(await _lobbyService.Create(lobbyInfo, userId));
+                return Ok(await _lobbyService.Create(userId));
             }
             catch (UserNotFoundException)
             {
@@ -53,7 +48,7 @@ namespace csharp_api.Controllers
             catch (ConditionalCheckFailedException)
             {
                 // TODO, retry
-                return BadRequest(new APIError("An unexpected UUID collision occurred", "ERR_UUID_COLLISION"));
+                return BadRequest(new APIError("An unexpected lobby code collision occurred", "ERR_CODE_COLLISION"));
             }
             catch (Exception)
             {

@@ -11,9 +11,6 @@ namespace csharp_api.Model.Lobby
         [JsonPropertyName("code")]
         public string Code { get; set; }
 
-        [JsonPropertyName("name")]
-        public string Name { get; set; }
-
         [JsonPropertyName("dateCreated")]
         public long DateCreated { get; set; }
 
@@ -35,10 +32,9 @@ namespace csharp_api.Model.Lobby
         [JsonPropertyName("currentGameId")]
         public string CurrentGameId { get; set; }
 
-        public LobbyMetadata(Profile ownerProfile, string name, string code)
+        public LobbyMetadata(Profile ownerProfile, string code)
         {
             this.Code = code;
-            this.Name = name;
             this.DateCreated = DateTimeOffset.Now.ToUnixTimeMilliseconds();
             this.RoundCount = 0;
             this.PlayerCount = 0;
@@ -52,7 +48,6 @@ namespace csharp_api.Model.Lobby
         public LobbyMetadata(Dictionary<string, AttributeValue> item)
         {
             this.Code = item["pk"].S.Split("#")[1];
-            this.Name = item["name"].S;
             this.DateCreated = Int64.Parse(item["dateCreated"].N);
             this.RoundCount = Int32.Parse(item["roundCount"].N);
             this.PlayerCount = Int32.Parse(item["playerCount"].N);

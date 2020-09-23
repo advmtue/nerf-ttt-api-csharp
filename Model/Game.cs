@@ -8,9 +8,6 @@ namespace csharp_api.Model.Game
 {
     public class GameMetadata
     {
-        [JsonPropertyName("name")]
-        public string Name { get; set; }
-
         [JsonPropertyName("gameId")]
         public string GameId { get; set; }
 
@@ -42,7 +39,6 @@ namespace csharp_api.Model.Game
 
         public GameMetadata(Dictionary<string, AttributeValue> item)
         {
-            this.Name = item["name"].S;
             this.GameId = item["pk"].S.Split("#")[1];
             this.DateLaunched = item["dateLaunched"].N;
             this.Status = item["status"].S;

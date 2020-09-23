@@ -16,7 +16,6 @@ namespace csharp_api.Database.DynamoDB
                 Item = new System.Collections.Generic.Dictionary<string, AttributeValue> {
                     { "pk", new AttributeValue() { S = $"LOBBY#{lobbyInfo.Code}" } },
                     { "sk", new AttributeValue() { S = "metadata" } },
-                    { "name", new AttributeValue() { S = lobbyInfo.Name } },
                     { "dateCreated", new AttributeValue() { N = lobbyInfo.DateCreated.ToString() } },
                     { "roundCount", new AttributeValue() { N = lobbyInfo.RoundCount.ToString() } },
                     { "playerCount", new AttributeValue() { N = lobbyInfo.PlayerCount.ToString() } },
@@ -119,6 +118,7 @@ namespace csharp_api.Database.DynamoDB
                 UpdateExpression = "SET #playerCount = #playerCount + :incAmount"
             };
 
+            // FIXME Does this actually make any sense?
             Task.WaitAll(
                 _client.PutItemAsync(addPlayerRequest),
                 _client.UpdateItemAsync(increasePlayerCountRequest)

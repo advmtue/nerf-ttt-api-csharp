@@ -15,7 +15,6 @@ namespace csharp_api.Database.DynamoDB
             GameMetadata newGame = new GameMetadata
             {
                 GameId = Guid.NewGuid().ToString(),
-                Name = lobbyInfo.Name,
                 DateLaunched = DateTimeOffset.Now.ToUnixTimeMilliseconds().ToString(),
                 Status = "PREGAME",
                 OwnerId = lobbyInfo.OwnerId,
@@ -35,7 +34,6 @@ namespace csharp_api.Database.DynamoDB
                     Item = new Dictionary<string, AttributeValue> {
                         { "pk", new AttributeValue($"GAME#{newGame.GameId}") },
                         { "sk", new AttributeValue("metadata") },
-                        { "name", new AttributeValue(newGame.Name) },
                         { "dateLaunched", new AttributeValue { N = newGame.DateLaunched }},
                         { "status", new AttributeValue("PREGAME") },
                         { "ownerName", new AttributeValue(newGame.OwnerName) },

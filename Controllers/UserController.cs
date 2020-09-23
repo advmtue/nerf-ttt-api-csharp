@@ -39,7 +39,7 @@ namespace csharp_api.Controllers
             Profile profile;
             try
             {
-                profile = await _database.GetUserById(userId);
+                profile = await _database.GetUser(userId);
             }
             catch (Exception)
             {

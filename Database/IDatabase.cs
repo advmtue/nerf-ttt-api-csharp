@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using csharp_api.Transfer.Response.Discord;
 using csharp_api.Model.User;
-using csharp_api.Model.Lobby;
 using csharp_api.Model.Game;
 
 namespace csharp_api.Database
@@ -16,23 +15,27 @@ namespace csharp_api.Database
 
     public interface IDatabase
     {
-        Task<Profile> GetUserByDiscord(DiscordUser discordUser);
+        // Registration
         Task<Profile> CreateUserByDiscord(DiscordUser discordUser);
-        Task<Profile> GetUserById(string userId);
         Task RegisterUser(string userId, string name);
-        Task CreateLobby(LobbyMetadata lobbyInfo);
-        Task<LobbyMetadata> GetLobbyByCode(string lobbyCode);
-        Task LobbyCloseByAdmin(string lobbyCode);
-        Task<List<LobbyPlayer>> LobbyGetPlayers(string lobbyCode);
-        Task LobbyPlayerJoin(string lobbyCode, Profile userProfile);
-        Task LobbyPlayerLeave(string lobbyCode, string userId);
-        Task LobbyPlayerSetReady(string lobbyCode, string userId);
-        Task LobbyPlayerSetUnready(string lobbyCode, string userId);
-        Task<GameMetadata> GameCreate(LobbyMetadata lobbyInfo, List<GamePlayer> players);
-        Task<GameMetadata> GetGameById(string gameId);
-        Task<List<GamePlayer>> GetGamePlayers(string gameId);
-        Task GameStart(string gameId, string callingPlayerId);
-        Task GameEndTimer(string gameId, string winningTeam);
-        Task<List<GamePlayer>> GameGetPlayers(string gameId);
+
+        // Get information
+        Task<Profile> GetUser(string userId);
+        Task<Profile> GetUserByDiscord(DiscordUser discordUser);
+        Task<GameMetadata> GetGame(string lobbyCode);
+        Task<List<GamePlayer>> GameGetPlayers(string lobbyCode);
+
+        // Game updates
+        Task CreateGame(GameMetadata lobbyInfo);
+        Task LaunchGame(string gameId, string callingPlayerId, List<GamePlayer> playerInfo);
+        Task StartGame(string gameId, string callingPlayerId);
+        Task EndGameByTime(string gameId, string winningTeam);
+
+        // Game actions
+        Task AdminCloseGame(string lobbyCode);
+        Task GamePlayerJoin(string lobbyCode, Profile userProfile);
+        Task GamePlayerLeave(string lobbyCode, string userId);
+        Task GamePlayerSetReady(string lobbyCode, string userId);
+        Task GamePlayerSetUnready(string lobbyCode, string userId);
     }
 }

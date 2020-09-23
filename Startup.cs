@@ -66,7 +66,6 @@ namespace csharp_api
             services.AddSingleton<IDatabase, DynamoDBContext>();
             services.AddSingleton<TokenManager, TokenManager>();
             services.AddSingleton<UserService, UserService>();
-            services.AddSingleton<LobbyService, LobbyService>();
             services.AddSingleton<MessageService, MessageService>();
             services.AddSingleton<GameService, GameService>();
             services.AddControllers();

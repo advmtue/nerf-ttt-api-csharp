@@ -24,6 +24,35 @@ namespace csharp_api.Controllers
         }
 
         [Authorize(Policy = "UserOnly")]
+        [HttpPost]
+        public async Task<IActionResult> Create()
+        {
+            string userId = HttpContext.User.Identity.Name;
+
+            try
+            {
+                return Ok(await _gameService.Create(userId));
+            }
+            catch (UserNotFoundException)
+            {
+                return BadRequest(new APIError("Could not lookup your userId", "ERR_USERID_INVALID"));
+            }
+            catch (CodePoolExhaustedException)
+            {
+                return BadRequest(new APIError("Lobby code pool is exhausted", "ERR_CODE_POOL_EXHAUSTED"));
+            }
+            catch (ConditionalCheckFailedException)
+            {
+                // TODO, retry
+                return BadRequest(new APIError("An unexpected lobby code collision occurred", "ERR_CODE_COLLISION"));
+            }
+            catch (Exception)
+            {
+                return BadRequest(new APIError("An unknown error occurred", "ERR_UNKNOWN"));
+            }
+        }
+
+        [Authorize(Policy = "UserOnly")]
         [HttpGet("{gameId}")]
         public async Task<IActionResult> Get([FromRoute] string gameId)
         {
@@ -62,7 +91,7 @@ namespace csharp_api.Controllers
 
         [Authorize(Policy = "UserOnly")]
         [HttpGet("{gameId}/start")]
-        public async Task<IActionResult> StartGame([FromRoute] string gameId)
+        public async Task<IActionResult> Start([FromRoute] string gameId)
         {
             try
             {
@@ -81,5 +110,144 @@ namespace csharp_api.Controllers
                 return BadRequest(new APIError("An unknown error occurred", "ERR_UNKNOWN"));
             }
         }
+
+        [Authorize(Policy = "UserOnly")]
+        [HttpGet("{code}/launch")]
+        public async Task<IActionResult> Launch([FromRoute] string code)
+        {
+            string userId = HttpContext.User.Identity.Name;
+
+            try
+            {
+                await _gameService.Launch(code, userId);
+
+                return Ok();
+            }
+            catch (PlayerNotOwnerException)
+            {
+                return BadRequest(new APIError("You are not the lobby owner", "ERR_NOT_OWNER"));
+            }
+            catch (LobbyNotStartableException)
+            {
+                return BadRequest(new APIError("Lobby is not in a startable state", "ERR_LOBBY_NOT_STARTABLE"));
+            }
+            catch (MinimumPlayersException)
+            {
+                return BadRequest(new APIError("Minimum player count not met", "ERR_MINIMUM_PLAYERS"));
+            }
+            catch (PlayersNotReadyException)
+            {
+                return BadRequest(new APIError("Some players are not ready", "ERR_PLAYERS_NOT_READY"));
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine($"[LobbyController] Exception :{e.Message}");
+                return BadRequest(new APIError("An unknown error occurred", "ERR_UNKNOWN"));
+            }
+        }
+
+
+        [Authorize(Policy = "AdminOnly")]
+        [HttpDelete("{code}")]
+        public async Task<IActionResult> Close([FromRoute] string code)
+        {
+            try
+            {
+                await _gameService.AdminCloseGame(code);
+                return Ok();
+            }
+            catch (LobbyNotFoundException)
+            {
+                return BadRequest(new APIError("Lobby not found", "ERR_LOBBY_NOT_FOUND"));
+            }
+        }
+
+        [Authorize(Policy = "UserOnly")]
+        [HttpGet("{code}/players")]
+        public async Task<IActionResult> GetPlayers([FromRoute] string code)
+        {
+            try
+            {
+                return Ok(await _gameService.GetGamePlayers(code));
+            }
+            catch (LobbyNotFoundException)
+            {
+                return BadRequest(new APIError("Lobby not found", "ERR_LOBBY_NOT_FOUND"));
+            }
+            catch (Exception)
+            {
+                return BadRequest(new APIError("An unknown error occurred", "ERR_UNKNOWN"));
+            }
+        }
+
+        [Authorize(Policy = "UserOnly")]
+        [HttpGet("{code}/join")]
+        public async Task<IActionResult> PlayerJoin([FromRoute] string code)
+        {
+            string userId = HttpContext.User.Identity.Name;
+
+            try
+            {
+                await _gameService.PlayerJoin(code, userId);
+                return Ok(new { success = true });
+            }
+            catch (Exception)
+            {
+                return BadRequest(new APIError("An unknown error occurred", "ERR_UNKNOWN"));
+            }
+        }
+
+        [Authorize(Policy = "UserOnly")]
+        [HttpGet("{code}/leave")]
+        public async Task<IActionResult> PlayerLeave([FromRoute] string code)
+        {
+            string userId = HttpContext.User.Identity.Name;
+
+            try
+            {
+                await _gameService.PlayerLeave(code, userId);
+                return Ok(new { success = true });
+            }
+            catch (Exception)
+            {
+                // TODO Error handling
+                return BadRequest(new APIError("An unknown error occurred", "ERR_UNKNONW"));
+            }
+        }
+
+        [Authorize(Policy = "UserOnly")]
+        [HttpGet("{code}/ready")]
+        public async Task<IActionResult> PlayerSetReady([FromRoute] string code)
+        {
+            string userId = HttpContext.User.Identity.Name;
+
+            try
+            {
+                await _gameService.PlayerSetReady(code, userId);
+                return Ok(new { success = true });
+            }
+            catch (Exception)
+            {
+                return BadRequest(new APIError("An unknown error occurred", "ERR_UNKNOWN"));
+            }
+        }
+
+        [Authorize(Policy = "UserOnly")]
+        [HttpGet("{code}/unready")]
+        public async Task<IActionResult> PlayerSetUnready([FromRoute] string code)
+        {
+            string userId = HttpContext.User.Identity.Name;
+
+            try
+            {
+                await _gameService.PlayerSetUnready(code, userId);
+                return Ok(new { success = true });
+            }
+            catch (Exception)
+            {
+                return BadRequest(new APIError("An unknown error occurred", "ERR_UNKNOWN"));
+            }
+        }
+
     }
 }

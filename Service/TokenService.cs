@@ -86,7 +86,7 @@ namespace csharp_api.Services
             // TODO Check token blacklist
 
             // Pull user from database
-            Profile profile = await _database.GetUserById(fullRefreshToken.Subject);
+            Profile profile = await _database.GetUser(fullRefreshToken.Subject);
 
             // Encode userId, accessLevel into token
             List<Claim> claims = new List<Claim> {

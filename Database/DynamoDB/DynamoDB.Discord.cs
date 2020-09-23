@@ -32,7 +32,7 @@ namespace csharp_api.Database.DynamoDB
             // Return the user
             try
             {
-                return await GetUserById(discordLoginResponse.Item["userId"].S);
+                return await GetUser(discordLoginResponse.Item["userId"].S);
             }
             catch (UserNotFoundException)
             {
@@ -45,6 +45,8 @@ namespace csharp_api.Database.DynamoDB
 
         public async Task<Profile> CreateUserByDiscord(DiscordUser discordUser)
         {
+            // TODO Transact write request
+
             // Generate a brand new user id
             string userId = Guid.NewGuid().ToString();
 

@@ -9,7 +9,7 @@ namespace csharp_api.Database.DynamoDB
 {
     public partial class DynamoDBContext : IDatabase
     {
-        public async Task<Profile> GetUserById(string userId)
+        public async Task<Profile> GetUser(string userId)
         {
             GetItemResponse profileResponse = await _client.GetItemAsync(new GetItemRequest
             {

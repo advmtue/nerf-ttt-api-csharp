@@ -34,49 +34,49 @@ namespace csharp_api.Services.Message
             }
         }
 
-        public async Task LobbyPlayerJoin(string lobbyCode, Profile player)
+        public async Task PlayerJoin(string gameCode, Profile player)
         {
             var data = JsonSerializer.Serialize<Profile>(player);
-            var uri = $"{_socketURI}/lobby/{lobbyCode}/playerjoin";
+            var uri = $"{_socketURI}/game/{gameCode}/playerjoin";
 
             await _MakeRequest(uri, data);
         }
 
-        public async Task LobbyPlayerLeave(string lobbyCode, string playerId)
+        public async Task PlayerLeave(string gameCode, string playerId)
         {
             var data = JsonSerializer.Serialize(new { playerId = playerId });
-            var uri = $"{_socketURI}/lobby/{lobbyCode}/playerleave";
+            var uri = $"{_socketURI}/game/{gameCode}/playerleave";
 
             await _MakeRequest(uri, data);
         }
 
-        public async Task LobbyPlayerReady(string lobbyCode, string playerId)
+        public async Task PlayerSetReady(string gameCode, string playerId)
         {
             var data = JsonSerializer.Serialize(new { playerId = playerId });
-            var uri = $"{_socketURI}/lobby/{lobbyCode}/playerready";
+            var uri = $"{_socketURI}/game/{gameCode}/playerready";
 
             await _MakeRequest(uri, data);
         }
 
-        public async Task LobbyPlayerUnready(string lobbyCode, string playerId)
+        public async Task PlayerSetUnready(string gameCode, string playerId)
         {
             var data = JsonSerializer.Serialize(new { playerId = playerId });
-            var uri = $"{_socketURI}/lobby/{lobbyCode}/playerunready";
+            var uri = $"{_socketURI}/game/{gameCode}/playerunready";
 
             await _MakeRequest(uri, data);
         }
 
-        public async Task LobbyClose(string lobbyCode)
+        public async Task GameClose(string gameCode)
         {
-            var uri = $"{_socketURI}/lobby/{lobbyCode}";
+            var uri = $"{_socketURI}/game/{gameCode}";
 
             await _client.DeleteAsync(uri);
         }
 
-        public async Task LobbyLaunch(string lobbyCode, string gameId)
+        public async Task GameLaunch(string gameId)
         {
             var data = JsonSerializer.Serialize(new { gameId = gameId });
-            var uri = $"{_socketURI}/lobby/{lobbyCode}/launched";
+            var uri = $"{_socketURI}/game/{gameId}/launched";
 
             await _MakeRequest(uri, data);
         }

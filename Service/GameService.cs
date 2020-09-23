@@ -4,18 +4,24 @@ using System.Threading.Tasks;
 using System.Collections.Generic;
 using csharp_api.Database;
 using csharp_api.Model.Game;
-using csharp_api.Model.Lobby;
+using csharp_api.Model.User;
 using csharp_api.Services.Message;
 using Amazon.DynamoDBv2.Model;
 
 namespace csharp_api.Services
 {
     public class PlayerNotInGameException : Exception { }
+    public class CodePoolExhaustedException : Exception { }
+    public class PlayerNotOwnerException : Exception { }
+    public class LobbyNotStartableException : Exception { }
+    public class MinimumPlayersException : Exception { }
+    public class PlayersNotReadyException : Exception { }
 
     public class GameService
     {
         private IDatabase _database;
         private MessageService _messageService;
+        private List<string> _usedGameCodes = new List<string>();
 
         // Create a cache for game players, since the information doesn't change
         private Dictionary<string, List<GamePlayer>> _gamePlayerCache = new Dictionary<string, List<GamePlayer>>();
@@ -26,7 +32,7 @@ namespace csharp_api.Services
             _messageService = messageService;
         }
 
-        public async Task<string> Create(LobbyMetadata lobbyInfo, List<LobbyPlayer> players)
+        public void _InitializePlayers(List<GamePlayer> players)
         {
             // Random for allocation of traitors
             var random = new Random();
@@ -36,50 +42,51 @@ namespace csharp_api.Services
             int detectiveCount = (players.Count / 8) + 1;
             int playerCount = players.Count;
 
-            List<GamePlayer> gamePlayers = new List<GamePlayer>();
+            List<string> analyzerList = _GenerateAnalyzerCodes(players.Count);
+            List<int> indexPool = Enumerable.Range(0, players.Count).ToList();
 
-            List<string> analyzerList = _generateAnalyzerCodes(players.Count);
-
-            while (gamePlayers.Count != playerCount)
+            while (analyzerList.Count != 0)
             {
                 // Take a random player
-                int playerIdx = random.Next(0, players.Count);
+                int indexPoolIdx = random.Next(0, indexPool.Count);
+                int playerIdx = indexPool[indexPoolIdx];
+                indexPool.RemoveAt(indexPoolIdx);
 
-                // Get an analyzer code
-                string code = analyzerList[0];
+                GamePlayer ply = players[playerIdx];
+
+                // Set analyzer code
+                ply.LastScanTime = "0";
+                ply.ScansRemaining = 0;
+                ply.AnalyzerCode = analyzerList[0];
                 analyzerList.RemoveAt(0);
 
-                string role = "INNOCENT";
+                // Default role = INNOCENT
+                ply.Role = "INNOCENT";
+
+                // Set player to alive
+                ply.IsAlive = true;
 
                 if (traitorCount > 0)
                 {
                     // Assign to traitor
-                    role = "TRAITOR";
+                    ply.Role = "TRAITOR";
+
                     traitorCount--;
                 }
                 else if (detectiveCount > 0)
                 {
                     // Assign to detective
-                    role = "DETECTIVE";
+                    ply.Role = "DETECTIVE";
+                    ply.ScansRemaining = 3;
+
                     detectiveCount--;
                 }
-
-                GamePlayer ply = new GamePlayer(players[playerIdx], role, code);
-                gamePlayers.Add(ply);
             }
-
-
-            GameMetadata gameInfo = await _database.GameCreate(lobbyInfo, gamePlayers);
-
-            // Cache player information
-            _gamePlayerCache.Add(gameInfo.GameId, gamePlayers);
-
-            return gameInfo.GameId;
         }
 
         public async Task<GameMetadata> Get(string gameId)
         {
-            return await _database.GetGameById(gameId);
+            return await _database.GetGame(gameId);
         }
 
         public async Task<GamePlayerInfo> GetFilteredInfo(string gameId, string userId)
@@ -94,7 +101,7 @@ namespace csharp_api.Services
             else
             {
                 // Pull from DB
-                gamePlayers = await _database.GetGamePlayers(gameId);
+                gamePlayers = await _database.GameGetPlayers(gameId);
                 _gamePlayerCache.Add(gameId, gamePlayers);
             }
 
@@ -149,7 +156,7 @@ namespace csharp_api.Services
         public async Task StartGame(string gameId, string callingPlayerId)
         {
             // Attempt to start game (ownerId can be checked as condition)
-            await _database.GameStart(gameId, callingPlayerId);
+            await _database.StartGame(gameId, callingPlayerId);
             await _messageService.GameStart(gameId);
 
             // End the game after some amount of time
@@ -170,19 +177,21 @@ namespace csharp_api.Services
 
         private async Task EndGameTimer(string gameId)
         {
-            var playerList = await _database.GetGamePlayers(gameId);
-            var winningTeam = _calculateWinningTeamTimer(playerList);
+            var playerList = await _database.GameGetPlayers(gameId);
+            var winningTeam = _CalculateWinningTeamTimer(playerList);
 
-            try {
-                await _database.GameEndTimer(gameId, winningTeam);
+            try
+            {
+                await _database.EndGameByTime(gameId, winningTeam);
                 await _messageService.GameEndTimer(gameId);
-            } catch (ConditionalCheckFailedException)
+            }
+            catch (ConditionalCheckFailedException)
             {
                 Console.WriteLine("[GameService] Game timer ended but game is not INGAME --IGNORING--");
             }
         }
 
-        private static string _calculateWinningTeamTimer(List<GamePlayer> players) 
+        private static string _CalculateWinningTeamTimer(List<GamePlayer> players)
         {
             int numDetectiveAlive = 0;
 
@@ -196,14 +205,15 @@ namespace csharp_api.Services
 
             return (numDetectiveAlive > 0) ? "INNOCENT" : "TRAITOR";
         }
-        private static List<string> _generateAnalyzerCodes(int length)
+
+        private static List<string> _GenerateAnalyzerCodes(int count)
         {
             var random = new Random();
             const string letters = "ABCDEFGHJKLMNOPQRSTUVWXYZ2345678";
 
             List<string> codes = new List<string>();
 
-            while (codes.Count < length)
+            while (codes.Count < count)
             {
                 var code = new string(Enumerable.Repeat(letters, 4).Select(s => s[random.Next(s.Length)]).ToArray());
 
@@ -218,6 +228,141 @@ namespace csharp_api.Services
             }
 
             return codes;
+        }
+
+        private static string _GenerateCode(int length)
+        {
+            var random = new Random();
+            const string letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+            return new string(Enumerable.Repeat(letters, length).Select(s => s[random.Next(s.Length)]).ToArray());
+        }
+
+        public async Task<GameMetadata> Create(string ownerId)
+        {
+            Console.WriteLine("[GameService] Generating new lobby code");
+
+            string code = "default";
+            bool available = false;
+            int attempts = 0;
+            do
+            {
+                code = _GenerateCode(5);
+
+                if (!_usedGameCodes.Contains(code))
+                {
+                    available = true;
+                }
+                else
+                {
+                    Console.WriteLine("[GameService] Ignored code with collision = " + code);
+                }
+
+                attempts++;
+            } while (!available && attempts < 1000);
+
+            // Couldn't find a valid code in the pool
+            if (code == "default")
+            {
+                throw new CodePoolExhaustedException();
+            }
+
+            // Lookup the owner
+            // TODO Ensure that the caller is catching UserNotFoundException
+            Profile ownerProfile = await _database.GetUser(ownerId);
+
+            // Found a valid code, add it to the list of used codes
+            Console.WriteLine($"[GameService] Code = {code}, Attempts = {attempts}");
+            _usedGameCodes.Add(code);
+
+            GameMetadata gameInfo = new GameMetadata(ownerProfile, code);
+
+            // Save
+            await _database.CreateGame(gameInfo);
+
+            return gameInfo;
+        }
+
+        public async Task Launch(string code, string callingUserId)
+        {
+            GameMetadata lobbyMeta = await _database.GetGame(code);
+
+            // Check the owner of the lobby is the calling player
+            if (lobbyMeta.OwnerId != callingUserId)
+            {
+                throw new PlayerNotOwnerException();
+            }
+
+            // Check the lobby status is LOBBY
+            if (lobbyMeta.Status != "LOBBY")
+            {
+                throw new LobbyNotStartableException();
+            }
+
+            List<GamePlayer> players = await _database.GameGetPlayers(code);
+
+            // Check that there is at least 3 players
+            // FIXME Remove debug 0
+            if (players.Count < 0)
+            {
+                throw new MinimumPlayersException();
+            }
+
+            // Check that all players are ready
+            var potentialUnreadyPlayer = players.Find(p => !p.IsReady);
+            if (potentialUnreadyPlayer != null)
+            {
+                throw new PlayersNotReadyException();
+            }
+
+            // Allocate roles
+            _InitializePlayers(players);
+
+            // Cache players
+            _gamePlayerCache.Add(code, players);
+
+            // Save information
+            await _database.LaunchGame(code, callingUserId, players);
+
+            // Let players know the lobby has launched
+            await _messageService.GameLaunch(code);
+        }
+
+        public async Task AdminCloseGame(string code)
+        {
+            await _database.AdminCloseGame(code);
+            await _messageService.GameClose(code);
+
+            this._usedGameCodes.Remove(code);
+        }
+
+        public async Task PlayerJoin(string lobbyCode, string userId)
+        {
+            // TODO Check lobby status
+            Profile userProfile = await _database.GetUser(userId);
+            await _database.GamePlayerJoin(lobbyCode, userProfile);
+            await _messageService.PlayerJoin(lobbyCode, userProfile);
+        }
+
+        public async Task PlayerLeave(string lobbyCode, string userId)
+        {
+            // TODO Check lobby status
+            await _database.GamePlayerLeave(lobbyCode, userId);
+            await _messageService.PlayerLeave(lobbyCode, userId);
+        }
+
+        public async Task PlayerSetReady(string lobbyCode, string userId)
+        {
+            // TODO Check lobby status
+            await _database.GamePlayerSetReady(lobbyCode, userId);
+            await _messageService.PlayerSetReady(lobbyCode, userId);
+        }
+
+        public async Task PlayerSetUnready(string lobbyCode, string userId)
+        {
+            // TODO Check lobby status
+            await _database.GamePlayerSetUnready(lobbyCode, userId);
+            await _messageService.PlayerSetUnready(lobbyCode, userId);
         }
     }
 }

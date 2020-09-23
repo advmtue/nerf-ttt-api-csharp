@@ -1,15 +1,18 @@
 using System;
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
-using csharp_api.Model.Lobby;
 using Amazon.DynamoDBv2.Model;
+using csharp_api.Model.User;
 
 namespace csharp_api.Model.Game
 {
     public class GameMetadata
     {
-        [JsonPropertyName("gameId")]
-        public string GameId { get; set; }
+        [JsonPropertyName("code")]
+        public string Code { get; set; }
+
+        [JsonPropertyName("dateCreated")]
+        public string DateCreated { get; set; }
 
         [JsonPropertyName("dateLaunched")]
         public string DateLaunched { get; set; }
@@ -20,36 +23,49 @@ namespace csharp_api.Model.Game
         [JsonPropertyName("dateEnded")]
         public string DateEnded { get; set; }
 
-        [JsonPropertyName("winningTeam")]
-        public string WinningTeam { get; set; }
-
-        [JsonPropertyName("status")]
-        public string Status { get; set; }
+        [JsonPropertyName("ownerId")]
+        public string OwnerId { get; set; }
 
         [JsonPropertyName("ownerName")]
         public string OwnerName { get; set; }
 
-        [JsonPropertyName("ownerId")]
-        public string OwnerId { get; set; }
+        [JsonPropertyName("status")]
+        public string Status { get; set; }
 
-        [JsonPropertyName("lobbyCode")]
-        public string LobbyCode { get; set; }
+        [JsonPropertyName("winningTeam")]
+        public string WinningTeam { get; set; }
+
+        [JsonPropertyName("nextGameCode")]
+        public string NextGameCode { get; set; }
 
         public GameMetadata() { }
 
+        // Create a new Game using an ownerProfile and code
+        public GameMetadata(Profile ownerProfile, string code)
+        {
+            this.Code = code;
+            this.DateCreated = DateTimeOffset.Now.ToUnixTimeMilliseconds().ToString();
+            this.OwnerName = ownerProfile.DisplayName;
+            this.OwnerId = ownerProfile.UserId;
+            this.Status = "LOBBY";
+        }
+
+        // Marshall from a database query
         public GameMetadata(Dictionary<string, AttributeValue> item)
         {
-            this.GameId = item["pk"].S.Split("#")[1];
-            this.DateLaunched = item["dateLaunched"].N;
-            this.Status = item["status"].S;
+            this.Code = item["pk"].S.Split("#")[1];
+            this.DateCreated = item["dateCreated"].N;
+            this.OwnerId = item["GSI1-SK"].S;
             this.OwnerName = item["ownerName"].S;
-            this.OwnerId = item["ownerId"].S;
-            this.LobbyCode = item["lobbyCode"].S;
+            this.Status = item["GSI1-PK"].S;
 
             // May be null
+            // TODO See if there's a cleaner way of retrieving this
+            this.DateLaunched = item.ContainsKey("dateLaunched") ? item["dateLaunched"].N : null;
             this.DateStarted = item.ContainsKey("dateStarted") ? item["dateStarted"].N : null;
             this.DateEnded = item.ContainsKey("dateEnded") ? item["dateEnded"].N : null;
             this.WinningTeam = item.ContainsKey("winningTeam") ? item["winningTeam"].S : null;
+            this.NextGameCode = item.ContainsKey("nextGameCode") ? item["nextGameCode"].S : null;
         }
     }
 
@@ -76,7 +92,10 @@ namespace csharp_api.Model.Game
         [JsonPropertyName("lastScanTime")]
         public string LastScanTime { get; set; }
 
-        public GamePlayer() {}
+        [JsonPropertyName("ready")]
+        public bool IsReady { get; set; }
+
+        public GamePlayer() { }
 
         public GamePlayer Clone()
         {
@@ -92,37 +111,23 @@ namespace csharp_api.Model.Game
             };
         }
 
-        public GamePlayer(LobbyPlayer lobbyPlayer, string role, string analyzerCode)
-        {
-            this.UserId = lobbyPlayer.UserId;
-            this.DisplayName = lobbyPlayer.DisplayName;
-            this.Role = role;
-            this.IsAlive = true;
-            this.AnalyzerCode = analyzerCode;
-            this.LastScanTime = "0";
-
-            if (this.Role == "DETECTIVE")
-            {
-                this.ScansRemaining = 2;
-            }
-            else
-            {
-                this.ScansRemaining = 0;
-            }
-        }
-
         public GamePlayer(Dictionary<string, AttributeValue> item)
         {
             this.UserId = item["sk"].S.Split("#")[1];
             this.DisplayName = item["displayName"].S;
-            this.Role = item["role"].S;
-            this.IsAlive = item["isAlive"].BOOL;
-            this.AnalyzerCode = item["analyzerCode"].S;
+            this.IsReady = item["ready"].BOOL;
+
+            // Potentially null
+            this.AnalyzerCode = item.ContainsKey("analyzerCode") ? item["analyzerCode"].S : null;
+            this.Role = item.ContainsKey("role") ? item["role"].S : null;
+            this.IsAlive = item.ContainsKey("isAlive") ? item["isAlive"].BOOL : false;
             this.ScansRemaining = item.ContainsKey("scansRemaining") ? Int32.Parse(item["scansRemaining"].N) : 0;
             this.LastScanTime = item.ContainsKey("lastScanTime") ? item["lastScanTime"].S : null;
         }
     }
 
+    // Simple DTO for player display
+    // TODO Add user id
     public class GamePlayerBasic
     {
         [JsonPropertyName("name")]
@@ -131,12 +136,14 @@ namespace csharp_api.Model.Game
         [JsonPropertyName("role")]
         public string Role { get; set; }
 
-        public GamePlayerBasic(string name, string role) {
+        public GamePlayerBasic(string name, string role)
+        {
             Name = name;
             Role = role;
         }
     }
 
+    // DTO for a localPlayer
     public class GamePlayerInfo
     {
 
@@ -155,6 +162,6 @@ namespace csharp_api.Model.Game
         [JsonPropertyName("knownRoles")]
         public List<GamePlayerBasic> KnownRoles { get; set; }
 
-        public GamePlayerInfo() {}
+        public GamePlayerInfo() { }
     }
 }

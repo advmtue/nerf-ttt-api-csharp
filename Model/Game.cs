@@ -120,9 +120,9 @@ namespace csharp_api.Model.Game
             // Potentially null
             this.AnalyzerCode = item.ContainsKey("analyzerCode") ? item["analyzerCode"].S : null;
             this.Role = item.ContainsKey("role") ? item["role"].S : null;
-            this.IsAlive = item.ContainsKey("isAlive") ? item["isAlive"].BOOL : false;
+            this.IsAlive = item.ContainsKey("alive") ? item["alive"].BOOL : false;
             this.ScansRemaining = item.ContainsKey("scansRemaining") ? Int32.Parse(item["scansRemaining"].N) : 0;
-            this.LastScanTime = item.ContainsKey("lastScanTime") ? item["lastScanTime"].S : null;
+            this.LastScanTime = item.ContainsKey("lastScanTime") ? item["lastScanTime"].N : null;
         }
     }
 
@@ -165,6 +165,9 @@ namespace csharp_api.Model.Game
 
         [JsonPropertyName("players")]
         public List<GamePlayerBasic> Players { get; set; }
+
+        [JsonPropertyName("alive")]
+        public bool Alive { get; set; }
 
         public GamePlayerInfo() { }
     }

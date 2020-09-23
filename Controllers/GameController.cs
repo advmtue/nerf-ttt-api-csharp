@@ -12,6 +12,11 @@ using csharp_api.Database;
 
 namespace csharp_api.Controllers
 {
+    public class ConfirmKillerRequest
+    {
+        public string killerId { get; set; }
+    }
+
     [ApiController]
     [Route("game")]
     public class GameController : ControllerBase
@@ -261,5 +266,21 @@ namespace csharp_api.Controllers
             }
         }
 
+        [Authorize(Policy = "UserOnly")]
+        [HttpPost("{code}/confirmkiller")]
+        public async Task<IActionResult> PlayerConfirmKiller([FromRoute] string gameId, [FromBody] ConfirmKillerRequest body)
+        {
+            try
+            {
+                string userId = HttpContext.User.Identity.Name;
+                await _gameService.PlayerConfirmKiller(gameId, userId, body.killerId);
+
+                return Ok();
+            }
+            catch (Exception)
+            {
+                return BadRequest(new APIError("An unknown error occurred", "ERR_UNKNOWN"));
+            }
+        }
     }
 }

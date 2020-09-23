@@ -150,7 +150,8 @@ namespace csharp_api.Services
                 AnalyzerCode = localPlayer.AnalyzerCode,
                 ScansRemaining = localPlayer.ScansRemaining,
                 LastScanTime = localPlayer.LastScanTime,
-                Players = gamePlayersBasic
+                Players = gamePlayersBasic,
+                Alive = localPlayer.IsAlive,
             };
         }
 
@@ -394,6 +395,17 @@ namespace csharp_api.Services
 
             await _database.GamePlayerSetUnready(gameCode, userId);
             await _messageService.PlayerSetUnready(gameCode, userId);
+        }
+
+        public async Task PlayerConfirmKiller(string gameCode, string deadPlayerId, string killerId)
+        {
+            // Check that the game is in INGAME phase
+            // Check that the calling player is not already dead
+            // Check that the killerId is in the lobby
+
+            // set player dead and add kill log
+
+            // check win conditions
         }
     }
 }

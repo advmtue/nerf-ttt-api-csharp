@@ -153,7 +153,7 @@ namespace csharp_api.Database.DynamoDB
                 ExpressionAttributeNames = new Dictionary<string, string>
                 {
                     { "#status", "GSI1-PK" },
-                    { "#ownerId", "ownerId" },
+                    { "#ownerId", "GSI1-SK" },
                 },
                 ExpressionAttributeValues = new Dictionary<string, AttributeValue>
                 {

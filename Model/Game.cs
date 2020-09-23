@@ -163,7 +163,7 @@ namespace csharp_api.Model.Game
         [JsonPropertyName("lastScanTime")]
         public string LastScanTime { get; set; }
 
-        [JsonPropertyName("knownRoles")]
+        [JsonPropertyName("players")]
         public List<GamePlayerBasic> Players { get; set; }
 
         public GamePlayerInfo() { }

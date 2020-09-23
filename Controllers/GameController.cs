@@ -1,11 +1,14 @@
+using System.Net.Http;
 using System;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 
+using Amazon.DynamoDBv2.Model;
 using csharp_api.Model.Game;
 using csharp_api.Transfer.Response.Error;
 using csharp_api.Services;
+using csharp_api.Database;
 
 namespace csharp_api.Controllers
 {
@@ -26,9 +29,11 @@ namespace csharp_api.Controllers
         {
             try
             {
-                GameMetadata gameData = await _gameService.Get(gameId);
-
-                return Ok(gameData);
+                return Ok(await _gameService.Get(gameId));
+            }
+            catch (GameNotFoundException)
+            {
+                return BadRequest(new APIError("No game found with matching ID", "ERR_GAME_NOT_FOUND"));
             }
             catch (Exception)
             {
@@ -44,6 +49,10 @@ namespace csharp_api.Controllers
             {
                 string userId = HttpContext.User.Identity.Name;
                 return Ok(await _gameService.GetFilteredInfo(gameId, userId));
+            }
+            catch (PlayerNotInGameException)
+            {
+                return BadRequest(new APIError("You are not a player in the requested game", "ERR_PLAYER_NOT_IN_GAME"));
             }
             catch (Exception)
             {
@@ -61,6 +70,10 @@ namespace csharp_api.Controllers
                 await _gameService.StartGame(gameId, userId);
 
                 return Ok();
+            }
+            catch (ConditionalCheckFailedException)
+            {
+                return BadRequest(new APIError("Either game cannot be started, or you are not the owner", "ERR_START_CONDITION_CHECK_FAIL"));
             }
             catch (Exception e)
             {

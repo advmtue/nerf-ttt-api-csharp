@@ -1,15 +1,15 @@
 using System.Collections.Generic;
 using System;
-using System.Security.Claims;
 using System.Threading.Tasks;
 
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 
+using Amazon.DynamoDBv2.Model;
+
 using csharp_api.Model.Lobby;
 using csharp_api.Services;
 using csharp_api.Database;
-using csharp_api.Model;
 using csharp_api.Transfer.Response.Error;
 
 namespace csharp_api.Controllers
@@ -38,26 +38,41 @@ namespace csharp_api.Controllers
         {
             string userId = HttpContext.User.Identity.Name;
 
-            LobbyMetadata lobbyMeta = await _lobbyService.Create(lobbyInfo, userId);
-
-            return Ok(lobbyMeta);
+            try
+            {
+                return Ok(await _lobbyService.Create(lobbyInfo, userId));
+            }
+            catch (UserNotFoundException)
+            {
+                return BadRequest(new APIError("Could not lookup your userId", "ERR_USERID_INVALID"));
+            }
+            catch (CodePoolExhaustedException)
+            {
+                return BadRequest(new APIError("Lobby code pool is exhausted", "ERR_CODE_POOL_EXHAUSTED"));
+            }
+            catch (ConditionalCheckFailedException)
+            {
+                // TODO, retry
+                return BadRequest(new APIError("An unexpected UUID collision occurred", "ERR_UUID_COLLISION"));
+            }
+            catch (Exception)
+            {
+                return BadRequest(new APIError("An unknown error occurred", "ERR_UNKNOWN"));
+            }
         }
 
         [Authorize(Policy = "UserOnly")]
         [HttpGet("{code}")]
         public async Task<IActionResult> GetByCode([FromRoute] string code)
         {
-            LobbyMetadata lobbyMeta;
             try
             {
-                lobbyMeta = await _lobbyService.GetByCode(code);
+                return Ok(await _lobbyService.GetByCode(code));
             }
             catch (LobbyNotFoundException)
             {
                 return BadRequest(new APIError("Lobby not found", "ERR_LOBBY_NOT_FOUND"));
             }
-
-            return Ok(lobbyMeta);
         }
 
 
@@ -68,13 +83,12 @@ namespace csharp_api.Controllers
             try
             {
                 await _lobbyService.CloseLobbyByAdmin(code);
+                return Ok();
             }
             catch (LobbyNotFoundException)
             {
                 return BadRequest(new APIError("Lobby not found", "ERR_LOBBY_NOT_FOUND"));
             }
-
-            return Ok(new { success = true });
         }
 
         [Authorize(Policy = "UserOnly")]

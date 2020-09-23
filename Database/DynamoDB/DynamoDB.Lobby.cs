@@ -52,13 +52,12 @@ namespace csharp_api.Database.DynamoDB
 
         public async Task LobbyCloseByAdmin(string lobbyCode)
         {
-            // Delete the lobby
+            // Delete the lobby and all associated information
             await _client.DeleteItemAsync(new DeleteItemRequest()
             {
                 TableName = _tableName,
                 Key = new Dictionary<string, AttributeValue> {
-                    { "pk", new AttributeValue() { S = $"LOBBY#{lobbyCode}" } },
-                    { "sk", new AttributeValue() { S = "metadata" } },
+                    { "pk", new AttributeValue() { S = $"LOBBY#{lobbyCode}" } }
                 },
             });
         }

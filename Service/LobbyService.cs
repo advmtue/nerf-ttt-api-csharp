@@ -47,12 +47,6 @@ namespace csharp_api.Services
             // Lookup the owner
             Profile ownerProfile = await _database.GetUserById(ownerId);
 
-            // Ensure the owner exists
-            if (ownerProfile == null)
-            {
-                throw new UserNotFoundException();
-            }
-
             Console.WriteLine("[LobbyService] Generating new lobby code");
 
             string code = "default";

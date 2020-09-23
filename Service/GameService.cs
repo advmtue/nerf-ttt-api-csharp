@@ -6,6 +6,7 @@ using csharp_api.Database;
 using csharp_api.Model.Game;
 using csharp_api.Model.Lobby;
 using csharp_api.Services.Message;
+using Amazon.DynamoDBv2.Model;
 
 namespace csharp_api.Services
 {
@@ -172,8 +173,13 @@ namespace csharp_api.Services
             var playerList = await _database.GetGamePlayers(gameId);
             var winningTeam = _calculateWinningTeamTimer(playerList);
 
-            await _database.GameEndTimer(gameId, winningTeam);
-            await _messageService.GameEndTimer(gameId);
+            try {
+                await _database.GameEndTimer(gameId, winningTeam);
+                await _messageService.GameEndTimer(gameId);
+            } catch (ConditionalCheckFailedException)
+            {
+                Console.WriteLine("[GameService] Game timer ended but game is not INGAME --IGNORING--");
+            }
         }
 
         private static string _calculateWinningTeamTimer(List<GamePlayer> players) 

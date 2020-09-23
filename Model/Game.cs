@@ -130,14 +130,18 @@ namespace csharp_api.Model.Game
     // TODO Add user id
     public class GamePlayerBasic
     {
+        [JsonPropertyName("userId")]
+        public string UserId { get; set; }
+
         [JsonPropertyName("name")]
         public string Name { get; set; }
 
         [JsonPropertyName("role")]
         public string Role { get; set; }
 
-        public GamePlayerBasic(string name, string role)
+        public GamePlayerBasic(string userId, string name, string role)
         {
+            UserId = userId;
             Name = name;
             Role = role;
         }
@@ -160,7 +164,7 @@ namespace csharp_api.Model.Game
         public string LastScanTime { get; set; }
 
         [JsonPropertyName("knownRoles")]
-        public List<GamePlayerBasic> KnownRoles { get; set; }
+        public List<GamePlayerBasic> Players { get; set; }
 
         public GamePlayerInfo() { }
     }

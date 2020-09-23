@@ -139,7 +139,7 @@ namespace csharp_api.Services
                     player.Role = "INNOCENT";
                 }
 
-                return new GamePlayerBasic(player.DisplayName, player.Role);
+                return new GamePlayerBasic(player.UserId, player.DisplayName, player.Role);
             }).ToList();
 
 
@@ -149,7 +149,7 @@ namespace csharp_api.Services
                 AnalyzerCode = localPlayer.AnalyzerCode,
                 ScansRemaining = localPlayer.ScansRemaining,
                 LastScanTime = localPlayer.LastScanTime,
-                KnownRoles = gamePlayersBasic
+                Players = gamePlayersBasic
             };
         }
 

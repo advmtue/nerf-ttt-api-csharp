@@ -12,7 +12,6 @@ namespace csharp_api.Database
     public class LobbyNotFoundException : Exception {}
     public class GameNotFoundException : Exception {}
 
-
     public interface IDatabase
     {
         // Registration

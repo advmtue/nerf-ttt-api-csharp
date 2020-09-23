@@ -205,15 +205,13 @@ namespace csharp_api.Database.DynamoDB
             // FIXME Delete players
         }
 
-        public async Task GamePlayerJoin(string lobbyCode, Profile userProfile)
+        public async Task GamePlayerJoin(string gameCode, Profile userProfile)
         {
-            // TODO check game status
-
             await _client.PutItemAsync(new PutItemRequest()
             {
                 TableName = _tableName,
                 Item = new Dictionary<string, AttributeValue> {
-                    { "pk", new AttributeValue() { S = $"GAME#{lobbyCode}" } },
+                    { "pk", new AttributeValue() { S = $"GAME#{gameCode}" } },
                     { "sk", new AttributeValue() { S = $"PLAYER#{userProfile.UserId}" } },
                     { "displayName", new AttributeValue() { S = userProfile.DisplayName } },
                     { "userId", new AttributeValue() { S = userProfile.UserId } },
@@ -223,15 +221,13 @@ namespace csharp_api.Database.DynamoDB
             });
         }
 
-        public async Task GamePlayerLeave(string lobbyCode, string userId)
+        public async Task GamePlayerLeave(string gameCode, string userId)
         {
-            // TODO Check game status
-
             await _client.DeleteItemAsync(new DeleteItemRequest
             {
                 TableName = _tableName,
                 Key = new Dictionary<string, AttributeValue> {
-                    { "pk", new AttributeValue { S = $"GAME#{lobbyCode}" } },
+                    { "pk", new AttributeValue { S = $"GAME#{gameCode}" } },
                     { "sk", new AttributeValue { S = $"PLAYER#{userId}" } },
                 }
             });

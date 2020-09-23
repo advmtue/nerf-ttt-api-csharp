@@ -191,6 +191,10 @@ namespace csharp_api.Controllers
                 await _gameService.PlayerJoin(code, userId);
                 return Ok(new { success = true });
             }
+            catch (GameInProgressException)
+            {
+                return BadRequest(new APIError("Game is in progress.", "ERR_GAME_IN_PROGRESS"));
+            }
             catch (Exception)
             {
                 return BadRequest(new APIError("An unknown error occurred", "ERR_UNKNOWN"));
@@ -207,6 +211,10 @@ namespace csharp_api.Controllers
             {
                 await _gameService.PlayerLeave(code, userId);
                 return Ok(new { success = true });
+            }
+            catch (GameInProgressException)
+            {
+                return BadRequest(new APIError("Game is in progress.", "ERR_GAME_IN_PROGRESS"));
             }
             catch (Exception)
             {
@@ -242,6 +250,10 @@ namespace csharp_api.Controllers
             {
                 await _gameService.PlayerSetUnready(code, userId);
                 return Ok(new { success = true });
+            }
+            catch (GameInProgressException)
+            {
+                return BadRequest(new APIError("Game is in progress.", "ERR_GAME_IN_PROGRESS"));
             }
             catch (Exception)
             {

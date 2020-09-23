@@ -16,6 +16,7 @@ namespace csharp_api.Services
     public class LobbyNotStartableException : Exception { }
     public class MinimumPlayersException : Exception { }
     public class PlayersNotReadyException : Exception { }
+    public class GameInProgressException : Exception { }
 
     public class GameService
     {
@@ -330,39 +331,69 @@ namespace csharp_api.Services
 
         public async Task AdminCloseGame(string code)
         {
+            // TODO Ensure game is in lobby phase
+
             await _database.AdminCloseGame(code);
             await _messageService.GameClose(code);
 
             this._usedGameCodes.Remove(code);
         }
 
-        public async Task PlayerJoin(string lobbyCode, string userId)
+        public async Task PlayerJoin(string gameCode, string userId)
         {
-            // TODO Check lobby status
+            // Check game is in lobby phase
+            GameMetadata gameInfo = await _database.GetGame(gameCode);
+
+            if (gameInfo.Status != "LOBBY")
+            {
+                throw new GameInProgressException();
+            }
+
             Profile userProfile = await _database.GetUser(userId);
-            await _database.GamePlayerJoin(lobbyCode, userProfile);
-            await _messageService.PlayerJoin(lobbyCode, userProfile);
+            await _database.GamePlayerJoin(gameCode, userProfile);
+            await _messageService.PlayerJoin(gameCode, userProfile);
         }
 
-        public async Task PlayerLeave(string lobbyCode, string userId)
+        public async Task PlayerLeave(string gameCode, string userId)
         {
-            // TODO Check lobby status
-            await _database.GamePlayerLeave(lobbyCode, userId);
-            await _messageService.PlayerLeave(lobbyCode, userId);
+            // Check game is in lobby phase
+            GameMetadata gameInfo = await _database.GetGame(gameCode);
+
+            if (gameInfo.Status != "LOBBY")
+            {
+                throw new GameInProgressException();
+            }
+
+            await _database.GamePlayerLeave(gameCode, userId);
+            await _messageService.PlayerLeave(gameCode, userId);
         }
 
-        public async Task PlayerSetReady(string lobbyCode, string userId)
+        public async Task PlayerSetReady(string gameCode, string userId)
         {
-            // TODO Check lobby status
-            await _database.GamePlayerSetReady(lobbyCode, userId);
-            await _messageService.PlayerSetReady(lobbyCode, userId);
+            // Check game is in lobby phase
+            GameMetadata gameInfo = await _database.GetGame(gameCode);
+
+            if (gameInfo.Status != "LOBBY")
+            {
+                throw new GameInProgressException();
+            }
+
+            await _database.GamePlayerSetReady(gameCode, userId);
+            await _messageService.PlayerSetReady(gameCode, userId);
         }
 
-        public async Task PlayerSetUnready(string lobbyCode, string userId)
+        public async Task PlayerSetUnready(string gameCode, string userId)
         {
-            // TODO Check lobby status
-            await _database.GamePlayerSetUnready(lobbyCode, userId);
-            await _messageService.PlayerSetUnready(lobbyCode, userId);
+            // Check game is in lobby phase
+            GameMetadata gameInfo = await _database.GetGame(gameCode);
+
+            if (gameInfo.Status != "LOBBY")
+            {
+                throw new GameInProgressException();
+            }
+
+            await _database.GamePlayerSetUnready(gameCode, userId);
+            await _messageService.PlayerSetUnready(gameCode, userId);
         }
     }
 }

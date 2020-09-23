@@ -95,7 +95,8 @@ namespace csharp_api.Services
             };
 
             // Create an access token which is valid for 10 minutes
-            JwtPayload payload = _CreatePayload(claims, DateTime.Now.AddMinutes(10));
+            // TODO Reduce token expiry time, currently set to a debug time for 2 hours
+            JwtPayload payload = _CreatePayload(claims, DateTime.Now.AddHours(2));
 
             return _jwtHandler.WriteToken(new JwtSecurityToken(_jwtHeader, payload));
         }

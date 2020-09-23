@@ -32,5 +32,7 @@ namespace csharp_api.Database
         Task<GameMetadata> GetGameById(string gameId);
         Task<List<GamePlayer>> GetGamePlayers(string gameId);
         Task GameStart(string gameId, string callingPlayerId);
+        Task GameEndTimer(string gameId, string winningTeam);
+        Task<List<GamePlayer>> GameGetPlayers(string gameId);
     }
 }

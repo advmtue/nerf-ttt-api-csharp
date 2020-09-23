@@ -70,5 +70,12 @@ namespace csharp_api.Services.Message {
 
         await _MakeRequest(uri, data);
     }
+
+    public async Task GameEndTimer(string gameId) {
+        var data = JsonSerializer.Serialize(new {gameId = gameId});
+        var uri = $"{_socketURI}/game/{gameId}/ended";
+
+        await _MakeRequest(uri, data);
+    }
   }
 }

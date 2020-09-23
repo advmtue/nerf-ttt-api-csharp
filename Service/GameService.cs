@@ -150,8 +150,46 @@ namespace csharp_api.Services
             // Attempt to start game (ownerId can be checked as condition)
             await _database.GameStart(gameId, callingPlayerId);
             await _messageService.GameStart(gameId);
+
+            // End the game after some amount of time
+            _ = Task.Run(async delegate
+            {
+                // TODO Configurable
+                // Game lasts 10 minutes
+                await Task.Delay(600000);
+                Console.WriteLine("[GameService] Game would finish now");
+                await EndGameTimer(gameId);
+            });
         }
 
+        public async Task<List<GamePlayer>> GetGamePlayers(string gameId)
+        {
+            return await _database.GameGetPlayers(gameId);
+        }
+
+        private async Task EndGameTimer(string gameId)
+        {
+            var playerList = await _database.GetGamePlayers(gameId);
+            var winningTeam = _calculateWinningTeamTimer(playerList);
+
+            await _database.GameEndTimer(gameId, winningTeam);
+            await _messageService.GameEndTimer(gameId);
+        }
+
+        private static string _calculateWinningTeamTimer(List<GamePlayer> players) 
+        {
+            int numDetectiveAlive = 0;
+
+            foreach (GamePlayer player in players)
+            {
+                if (player.Role == "DETECTIVE" && player.IsAlive)
+                {
+                    numDetectiveAlive++;
+                }
+            }
+
+            return (numDetectiveAlive > 0) ? "INNOCENT" : "TRAITOR";
+        }
         private static List<string> _generateAnalyzerCodes(int length)
         {
             var random = new Random();

@@ -162,5 +162,54 @@ namespace csharp_api.Database.DynamoDB
                 }
             });
         }
+
+        public async Task GameEndTimer(string gameId, string winningTeam)
+        {
+            await _client.UpdateItemAsync(new UpdateItemRequest
+            {
+                TableName = _tableName,
+                Key = new Dictionary<string, AttributeValue>
+                {
+                    { "pk", new AttributeValue($"GAME#{gameId}" ) },
+                    { "sk", new AttributeValue("metadata") }
+                },
+                UpdateExpression = "SET #status = :postgame, #winningTeam = :winningTeam",
+                ExpressionAttributeNames = new Dictionary<string, string>
+                {
+                    { "#status", "status" },
+                    { "#winningTeam", "winningTeam" }
+                },
+                ExpressionAttributeValues = new Dictionary<string, AttributeValue>
+                {
+                    { ":postgame", new AttributeValue("POSTGAME") },
+                    { ":winningTeam", new AttributeValue(winningTeam) },
+                    { ":ingame", new AttributeValue("INGAME") }
+                },
+                ConditionExpression = "#status = :ingame",
+            });
+        }
+
+        public async Task<List<GamePlayer>> GameGetPlayers(string gameId)
+        {
+            // TODO Paginate
+            QueryResponse playerQuery = await _client.QueryAsync(new QueryRequest
+            {
+                TableName = _tableName,
+                KeyConditionExpression = "pk = :gameId AND begins_with(sk, :player)",
+                ExpressionAttributeValues = new Dictionary<string, AttributeValue>
+                {
+                    { ":gameId", new AttributeValue($"GAME#{gameId}" ) },
+                    { ":player", new AttributeValue($"PLAYER") }
+                }
+            });
+
+            List<GamePlayer> players = new List<GamePlayer>();
+            foreach (Dictionary<string, AttributeValue> item in playerQuery.Items)
+            {
+                players.Add(new GamePlayer(item));
+            }
+
+            return players;
+        }
     }
 }

@@ -102,13 +102,15 @@ namespace csharp_api.Services
                 throw new LobbyNotStartableException();
             }
 
+
+            List<LobbyPlayer> players = await _database.LobbyGetPlayers(code);
+
             // Check that there is at least 3 players
-            if (lobbyMeta.PlayerCount < 0)
+            // FIXME Remove debug 0
+            if (players.Count < 0)
             {
                 throw new MinimumPlayersException();
             }
-
-            List<LobbyPlayer> players = await _database.LobbyGetPlayers(code);
 
             // Check that all players are ready
             var potentialUnreadyPlayer = players.Find(p => !p.IsReady);

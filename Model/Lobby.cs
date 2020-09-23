@@ -14,12 +14,6 @@ namespace csharp_api.Model.Lobby
         [JsonPropertyName("dateCreated")]
         public long DateCreated { get; set; }
 
-        [JsonPropertyName("roundCount")]
-        public int RoundCount { get; set; }
-
-        [JsonPropertyName("playerCount")]
-        public int PlayerCount { get; set; }
-
         [JsonPropertyName("ownerName")]
         public string OwnerName { get; set; }
 
@@ -36,8 +30,6 @@ namespace csharp_api.Model.Lobby
         {
             this.Code = code;
             this.DateCreated = DateTimeOffset.Now.ToUnixTimeMilliseconds();
-            this.RoundCount = 0;
-            this.PlayerCount = 0;
             this.OwnerName = ownerProfile.DisplayName;
             this.OwnerId = ownerProfile.UserId;
             this.Status = "LOBBY";
@@ -49,8 +41,6 @@ namespace csharp_api.Model.Lobby
         {
             this.Code = item["pk"].S.Split("#")[1];
             this.DateCreated = Int64.Parse(item["dateCreated"].N);
-            this.RoundCount = Int32.Parse(item["roundCount"].N);
-            this.PlayerCount = Int32.Parse(item["playerCount"].N);
             this.OwnerId = item["GSI1-SK"].S;
             this.OwnerName = item["ownerName"].S;
             this.Status = item["GSI1-PK"].S;

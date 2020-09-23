@@ -17,8 +17,6 @@ namespace csharp_api.Database.DynamoDB
                     { "pk", new AttributeValue() { S = $"LOBBY#{lobbyInfo.Code}" } },
                     { "sk", new AttributeValue() { S = "metadata" } },
                     { "dateCreated", new AttributeValue() { N = lobbyInfo.DateCreated.ToString() } },
-                    { "roundCount", new AttributeValue() { N = lobbyInfo.RoundCount.ToString() } },
-                    { "playerCount", new AttributeValue() { N = lobbyInfo.PlayerCount.ToString() } },
                     // Owner Id
                     { "GSI1-SK", new AttributeValue() { S = lobbyInfo.OwnerId } },
                     { "ownerName", new AttributeValue() { S = lobbyInfo.OwnerName } },
@@ -89,7 +87,7 @@ namespace csharp_api.Database.DynamoDB
         {
             // TODO check game status
 
-            PutItemRequest addPlayerRequest = new PutItemRequest()
+            await _client.PutItemAsync(new PutItemRequest()
             {
                 TableName = _tableName,
                 Item = new Dictionary<string, AttributeValue> {
@@ -100,62 +98,21 @@ namespace csharp_api.Database.DynamoDB
                     { "ready", new AttributeValue() { BOOL = false } }
                 },
                 ConditionExpression = "attribute_not_exists(sk)"
-            };
-
-            UpdateItemRequest increasePlayerCountRequest = new UpdateItemRequest()
-            {
-                TableName = _tableName,
-                Key = new Dictionary<string, AttributeValue> {
-                     { "pk", new AttributeValue() { S = $"LOBBY#{lobbyCode}" } },
-                     { "sk", new AttributeValue() { S = "metadata" } }
-                 },
-                ExpressionAttributeNames = new Dictionary<string, string> {
-                     { "#playerCount", "playerCount"}
-                },
-                ExpressionAttributeValues = new Dictionary<string, AttributeValue> {
-                    { ":incAmount", new AttributeValue() { N = "1" } }
-                },
-                UpdateExpression = "SET #playerCount = #playerCount + :incAmount"
-            };
-
-            // FIXME Does this actually make any sense?
-            Task.WaitAll(
-                _client.PutItemAsync(addPlayerRequest),
-                _client.UpdateItemAsync(increasePlayerCountRequest)
-            );
+            });
         }
 
         public async Task LobbyPlayerLeave(string lobbyCode, string userId)
         {
             // TODO Check game status
 
-            DeleteItemRequest removePlayerRequest = new DeleteItemRequest
+            await _client.DeleteItemAsync(new DeleteItemRequest
             {
                 TableName = _tableName,
                 Key = new Dictionary<string, AttributeValue> {
                     { "pk", new AttributeValue { S = $"LOBBY#{lobbyCode}" } },
                     { "sk", new AttributeValue { S = $"PLAYER#{userId}" } },
                 }
-            };
-
-            UpdateItemRequest decreasePlayerCountRequest = new UpdateItemRequest
-            {
-                TableName = _tableName,
-                Key = new Dictionary<string, AttributeValue> {
-                    { "pk", new AttributeValue { S = $"LOBBY#{lobbyCode}" } },
-                    { "sk", new AttributeValue { S = "metadata" } },
-                },
-                UpdateExpression = "SET #playerCount = #playerCount - :decAmount",
-                ExpressionAttributeNames = new Dictionary<string, string> {
-                    { "#playerCount", "playerCount" }
-                },
-                ExpressionAttributeValues = new Dictionary<string, AttributeValue> {
-                    { ":decAmount", new AttributeValue { N = "1" } }
-                }
-            };
-
-            await _client.DeleteItemAsync(removePlayerRequest);
-            await _client.UpdateItemAsync(decreasePlayerCountRequest);
+            });
         }
 
         public async Task LobbyPlayerSetReady(string lobbyCode, string userId)

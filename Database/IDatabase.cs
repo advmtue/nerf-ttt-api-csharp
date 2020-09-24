@@ -23,12 +23,15 @@ namespace csharp_api.Database
         Task<Profile> GetUserByDiscord(DiscordUser discordUser);
         Task<GameMetadata> GetGame(string lobbyCode);
         Task<List<GamePlayer>> GameGetPlayers(string lobbyCode);
+        Task<GamePlayer> GameGetPlayer(string lobbyCode, string userId);
+        Task<List<GameKill>> GameGetKills(string lobbyCode);
 
         // Game updates
         Task CreateGame(GameMetadata lobbyInfo);
         Task LaunchGame(string gameId, string callingPlayerId, List<GamePlayer> playerInfo);
         Task StartGame(string gameId, string callingPlayerId);
-        Task EndGameByTime(string gameId, string winningTeam);
+        Task EndGamePostPending(string gameId, string winningTeam);
+        Task EndGameComplete(string gameId);
 
         // Game actions
         Task AdminCloseGame(string lobbyCode);
@@ -36,5 +39,6 @@ namespace csharp_api.Database
         Task GamePlayerLeave(string lobbyCode, string userId);
         Task GamePlayerSetReady(string lobbyCode, string userId);
         Task GamePlayerSetUnready(string lobbyCode, string userId);
+        Task GamePlayerDie(string gameId, GamePlayer victim, GamePlayer killer);
     }
 }

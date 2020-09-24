@@ -1,10 +1,12 @@
 using System.Text;
 using System;
+using System.Collections.Generic;
 using System.Net.Http;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using System.Text.Json;
 using csharp_api.Model.User;
+using csharp_api.Model.Game;
 
 namespace csharp_api.Services.Message
 {
@@ -89,9 +91,18 @@ namespace csharp_api.Services.Message
             await _MakeRequest(uri, data);
         }
 
-        public async Task GameEndTimer(string gameId)
+        public async Task SendConfirmKills(string gameId, List<GamePlayerBasic> toConfirm)
         {
-            var data = JsonSerializer.Serialize(new { gameId = gameId });
+            var data = JsonSerializer.Serialize(toConfirm);
+            var uri = $"{_socketURI}/game/{gameId}/confirmkills";
+
+            await _MakeRequest(uri, data);
+        }
+
+        public async Task GameEnd(string gameId, string winningTeam, List<GameKill> kills)
+        {
+            // TODO Remove anonymous struct
+            var data = JsonSerializer.Serialize(new { winningTeam = winningTeam, kills = kills });
             var uri = $"{_socketURI}/game/{gameId}/ended";
 
             await _MakeRequest(uri, data);

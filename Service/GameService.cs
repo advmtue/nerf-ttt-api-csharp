@@ -17,6 +17,8 @@ namespace csharp_api.Services
     public class MinimumPlayersException : Exception { }
     public class PlayersNotReadyException : Exception { }
     public class GameInProgressException : Exception { }
+    public class GameNotInProgressException : Exception { }
+    public class PlayerIsDeadException : Exception { }
 
     public class GameService
     {
@@ -184,8 +186,7 @@ namespace csharp_api.Services
 
             try
             {
-                await _database.EndGameByTime(gameId, winningTeam);
-                await _messageService.GameEndTimer(gameId);
+                await _GameEnd(gameId, winningTeam);
             }
             catch (ConditionalCheckFailedException)
             {
@@ -400,12 +401,116 @@ namespace csharp_api.Services
         public async Task PlayerConfirmKiller(string gameCode, string deadPlayerId, string killerId)
         {
             // Check that the game is in INGAME phase
+            GameMetadata gameInfo = await _database.GetGame(gameCode);
+
+            if (gameInfo.Status != "INGAME")
+            {
+                throw new GameNotInProgressException();
+            }
+
             // Check that the calling player is not already dead
+            // Can't use condition check because we still need player information for the kill log
+            GamePlayer callingPlayer = await _database.GameGetPlayer(gameCode, deadPlayerId);
+
+            if (!callingPlayer.IsAlive)
+            {
+                throw new PlayerIsDeadException();
+            }
+
             // Check that the killerId is in the lobby
+            // This should throw a UserNotFoundException if the player isn't in the lobby
+            // Defaults to an unknown killer
+            GamePlayer killer = new GamePlayer() { UserId = "UNKNOWN", DisplayName = "UNKNOWN", Role = "INNOCENT" };
+            if (killerId != "UNKNOWN")
+            {
+                killer = await _database.GameGetPlayer(gameCode, killerId);
+            }
 
             // set player dead and add kill log
+            await _database.GamePlayerDie(gameCode, callingPlayer, killer);
 
             // check win conditions
+            string winningTeam = await _CheckWinConditionAlive(gameCode);
+
+            if (winningTeam == "NONE")
+            {
+                return;
+            }
+            else
+            {
+                await _GameEnd(gameCode, winningTeam);
+            }
+        }
+
+        private async Task _GameEnd(string gameId, string winningTeam)
+        {
+            // Update game metadata
+            await _database.EndGamePostPending(gameId, winningTeam);
+
+            // Pull kill list
+            List<GameKill> kills = await _database.GameGetKills(gameId);
+
+            // Check unconfirmed kills
+            List<GameKill> unconfirmedKills = new List<GameKill>();
+            kills.ForEach(kill =>
+            {
+                if (kill.KillerId == "UNKNOWN")
+                {
+                    unconfirmedKills.Add(kill);
+                }
+            });
+
+            if (unconfirmedKills.Count > 0)
+            {
+                // TODO Replace placeholder with something more meaningful
+                List<GamePlayerBasic> playersToConfirm = unconfirmedKills.Select(kill => {
+                    return new GamePlayerBasic(kill.VictimId, kill.VictimName, ":)" );
+                }).ToList();
+
+                await _messageService.SendConfirmKills(gameId, playersToConfirm);
+
+                // Game will offically end once these players have confirmed their deaths;
+                // Do nothing more at this point
+            }
+            else
+            {
+                // Game is officially ended
+                await _database.EndGameComplete(gameId);
+                await _messageService.GameEnd(gameId, winningTeam, kills);
+            }
+        }
+
+        private async Task<string> _CheckWinConditionAlive(string gameCode)
+        {
+            List<GamePlayer> players = await _database.GameGetPlayers(gameCode);
+
+            int innocentTeamAlive = 0; // Innocent + Detectives
+            int traitorTeamAlive = 0; // Traitor
+
+            foreach (GamePlayer player in players)
+            {
+                if (player.Role == "INNOCENT" || player.Role == "DETECTIVE")
+                {
+                    innocentTeamAlive++;
+                }
+                else
+                {
+                    traitorTeamAlive++;
+                }
+            }
+
+            if (traitorTeamAlive == 0)
+            {
+                return "INNOCENT";
+            }
+            else if (innocentTeamAlive == 0)
+            {
+                return "TRAITOR";
+            }
+            else
+            {
+                return "NONE";
+            }
         }
     }
 }

@@ -267,7 +267,7 @@ namespace csharp_api.Controllers
         }
 
         [Authorize(Policy = "UserOnly")]
-        [HttpPost("{code}/confirmkiller")]
+        [HttpPost("{gameId}/confirmkiller")]
         public async Task<IActionResult> PlayerConfirmKiller([FromRoute] string gameId, [FromBody] ConfirmKillerRequest body)
         {
             try
@@ -276,6 +276,18 @@ namespace csharp_api.Controllers
                 await _gameService.PlayerConfirmKiller(gameId, userId, body.killerId);
 
                 return Ok();
+            }
+            catch (GameNotInProgressException)
+            {
+                return BadRequest(new APIError("Game is not in progress", "ERR_GAME_NOT_ACTIVE"));
+            }
+            catch (PlayerIsDeadException)
+            {
+                return BadRequest(new APIError("You are already dead", "ERR_PLY_ALREADY_DEAD"));
+            }
+            catch (UserNotFoundException)
+            {
+                return BadRequest(new APIError("Specified killer is not in this game", "ERR_KILLER_NOT_FOUND"));
             }
             catch (Exception)
             {

@@ -171,4 +171,37 @@ namespace csharp_api.Model.Game
 
         public GamePlayerInfo() { }
     }
+
+    public class GameKill
+    {
+        [JsonPropertyName("killerId")]
+        public string KillerId { get; set; }
+
+        [JsonPropertyName("killerName")]
+        public string KillerName { get; set; }
+
+        [JsonPropertyName("victimId")]
+        public string VictimId { get; set; }
+
+        [JsonPropertyName("victimName")]
+        public string VictimName { get; set; }
+
+        [JsonPropertyName("wasTeamKill")]
+        public bool WasTeamKill { get; set; }
+
+        [JsonPropertyName("time")]
+        public string Time { get; set; }
+
+        public GameKill() {}
+
+        public GameKill(Dictionary<string, AttributeValue> item)
+        {
+            KillerId = item["killerId"].S;
+            KillerName = item["killerName"].S;
+            VictimId = item["victimId"].S;
+            VictimName = item["victimName"].S;
+            WasTeamKill = item["wasTeamKill"].BOOL;
+            Time = item["time"].S;
+        }
+    }
 }

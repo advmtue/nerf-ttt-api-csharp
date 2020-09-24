@@ -1,3 +1,4 @@
+using System.Threading;
 using System.Collections.ObjectModel;
 using System;
 using System.Threading.Tasks;
@@ -52,6 +53,49 @@ namespace csharp_api.Database.DynamoDB
             }
 
             return players;
+        }
+
+        public async Task<GamePlayer> GameGetPlayer(string gameId, string userId)
+        {
+            GetItemResponse playerResponse = await _client.GetItemAsync(new GetItemRequest
+            {
+                TableName = _tableName,
+                Key = new Dictionary<string, AttributeValue>
+                {
+                    { "pk", new AttributeValue($"GAME#{gameId}") },
+                    { "sk", new AttributeValue($"PLAYER#{userId}") }
+                }
+            });
+
+            if (!playerResponse.IsItemSet)
+            {
+                throw new UserNotFoundException();
+            }
+
+            return new GamePlayer(playerResponse.Item);
+        }
+
+        public async Task<List<GameKill>> GameGetKills(string gameId)
+        {
+            QueryResponse killQuery = await _client.QueryAsync(new QueryRequest
+            {
+                TableName = _tableName,
+                KeyConditionExpression = "pk = :gameId AND begins_with(sk, :kill)",
+                ExpressionAttributeValues = new Dictionary<string, AttributeValue>
+                {
+                    { ":gameId", new AttributeValue($"GAME#{gameId}") },
+                    { ":kill", new AttributeValue("KILL#") }
+                }
+            });
+
+            List<GameKill> kills = new List<GameKill>();
+
+            killQuery.Items.ForEach(item =>
+            {
+                kills.Add(new GameKill(item));
+            });
+
+            return kills;
         }
 
         public async Task CreateGame(GameMetadata gameInfo)
@@ -164,7 +208,7 @@ namespace csharp_api.Database.DynamoDB
             });
         }
 
-        public async Task EndGameByTime(string gameId, string winningTeam)
+        public async Task EndGamePostPending(string gameId, string winningTeam)
         {
             await _client.UpdateItemAsync(new UpdateItemRequest
             {
@@ -174,19 +218,43 @@ namespace csharp_api.Database.DynamoDB
                     { "pk", new AttributeValue($"GAME#{gameId}" ) },
                     { "sk", new AttributeValue("metadata") }
                 },
-                UpdateExpression = "SET #status = :postgame, #winningTeam = :winningTeam",
+                UpdateExpression = "SET #status = :postpending, #winningTeam = :winningTeam",
                 ExpressionAttributeNames = new Dictionary<string, string>
                 {
-                    { "#status", "status" },
+                    { "#status", "GSI1-PK" },
                     { "#winningTeam", "winningTeam" }
                 },
                 ExpressionAttributeValues = new Dictionary<string, AttributeValue>
                 {
-                    { ":postgame", new AttributeValue("POSTGAME") },
+                    { ":postpending", new AttributeValue("POSTPENDING") },
                     { ":winningTeam", new AttributeValue(winningTeam) },
                     { ":ingame", new AttributeValue("INGAME") }
                 },
                 ConditionExpression = "#status = :ingame",
+            });
+        }
+
+        public async Task EndGameComplete(string gameId)
+        {
+            await _client.UpdateItemAsync(new UpdateItemRequest
+            {
+                TableName = _tableName,
+                Key = new Dictionary<string, AttributeValue>
+                {
+                    { "pk", new AttributeValue($"GAME#{gameId}" )},
+                    { "sk", new AttributeValue("metadata") }
+                },
+                UpdateExpression = "SET #status = :postgame",
+                ConditionExpression = "#status = :postpending",
+                ExpressionAttributeNames = new Dictionary<string, string>
+                {
+                    { "#status", "GSI1-PK" }
+                },
+                ExpressionAttributeValues = new Dictionary<string, AttributeValue>
+                {
+                    { ":postgame", new AttributeValue("POSTGAME") },
+                    { ":postpending", new AttributeValue("POSTPENDING") }
+                }
             });
         }
 
@@ -271,6 +339,66 @@ namespace csharp_api.Database.DynamoDB
             };
 
             await _client.UpdateItemAsync(playerReadyRequest);
+        }
+
+        public async Task GamePlayerDie(string gameId, GamePlayer victim, GamePlayer killer)
+        {
+            // Update victim alive status
+            await _client.UpdateItemAsync(new UpdateItemRequest
+            {
+                TableName = _tableName,
+                Key = new Dictionary<string, AttributeValue>
+                {
+                    { "pk", new AttributeValue($"GAME#{gameId}") },
+                    { "sk", new AttributeValue($"PLAYER#{victim.UserId}") }
+                },
+                UpdateExpression = "SET #alive = :false",
+                ExpressionAttributeNames = new Dictionary<string, string>
+                {
+                    { "#alive", "alive" }
+                },
+                ExpressionAttributeValues = new Dictionary<string, AttributeValue>
+                {
+                    { ":false", new AttributeValue { BOOL = false } },
+                    { ":true", new AttributeValue { BOOL = true } }
+                },
+                ConditionExpression = "#alive = :true"
+            });
+
+            // Calculate team kill
+            bool wasTeamKill = false;
+            if (victim.Role == killer.Role)
+            {
+                wasTeamKill = true;
+            }
+            else if (victim.Role == "INNOCENT" && killer.Role == "DETECTIVE")
+            {
+                wasTeamKill = true;
+            }
+            else if (victim.Role == "DETECTIVE" && killer.Role == "INNOCENT")
+            {
+                wasTeamKill = true;
+            }
+
+            await _client.PutItemAsync(new PutItemRequest
+            {
+
+                TableName = _tableName,
+                Item = new Dictionary<string, AttributeValue>
+                {
+                    { "pk", new AttributeValue($"GAME#{gameId}") },
+                    { "sk", new AttributeValue($"KILL#{killer.UserId}#{victim.UserId}") },
+                    { "killerName", new AttributeValue(killer.DisplayName) },
+                    { "killerId", new AttributeValue(killer.UserId) },
+                    { "victimName", new AttributeValue(victim.DisplayName) },
+                    { "victimId", new AttributeValue(victim.UserId) },
+                    { "wasTeamKill", new AttributeValue { BOOL = wasTeamKill } },
+                    { "time", new AttributeValue { N = DateTimeOffset.Now.ToUnixTimeMilliseconds().ToString() } },
+                    // Analyzer information
+                    { "GSI1-PK", new AttributeValue($"GAME#{gameId}") },
+                    { "GSI1-SK", new AttributeValue(victim.AnalyzerCode) }
+                }
+            });
         }
     }
 }

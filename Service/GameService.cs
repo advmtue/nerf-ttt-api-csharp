@@ -400,10 +400,12 @@ namespace csharp_api.Services
 
         public async Task PlayerConfirmKiller(string gameCode, string deadPlayerId, string killerId)
         {
+            // TODO Player cannot kill themselves
+
             // Check that the game is in INGAME phase
             GameMetadata gameInfo = await _database.GetGame(gameCode);
 
-            if (gameInfo.Status != "INGAME")
+            if (gameInfo.Status != "INGAME" || gameInfo.Status != "POSTPENDING")
             {
                 throw new GameNotInProgressException();
             }
@@ -425,21 +427,50 @@ namespace csharp_api.Services
             {
                 killer = await _database.GameGetPlayer(gameCode, killerId);
             }
+            else if (gameInfo.Status != "INGAME")
+            {
+                // Can't set unknown killer post game
+                throw new UserNotFoundException();
+            }
+
 
             // set player dead and add kill log
-            await _database.GamePlayerDie(gameCode, callingPlayer, killer);
-
-            // check win conditions
-            string winningTeam = await _CheckWinConditionAlive(gameCode);
-
-            if (winningTeam == "NONE")
+            if (gameInfo.Status == "INGAME")
             {
-                return;
+                await _database.GamePlayerDie(gameCode, callingPlayer, killer);
+
+                // check win conditions
+                string winningTeam = await _CheckWinConditionAlive(gameCode);
+
+                if (winningTeam == "NONE")
+                {
+                    return;
+                }
+                else
+                {
+                    await _GameEnd(gameCode, winningTeam);
+                }
             }
             else
             {
-                await _GameEnd(gameCode, winningTeam);
+                await _database.GameConfirmKiller(gameCode, callingPlayer, killer);
+
+                if (await _CheckAllDeathsConfirmed(gameCode))
+                {
+                    // Enter POSTGAME
+                    await _database.EndGameComplete(gameCode);
+                }
             }
+        }
+
+        private async Task<bool> _CheckAllDeathsConfirmed(string gameCode)
+        {
+            // Pull kill list
+            var gameKills = await _database.GameGetKills(gameCode);
+
+            // Look for any kills where the killerID is unknown
+            GameKill possibleUnknownKill = gameKills.Find(kill => kill.KillerId == "UNKNOWN");
+            return possibleUnknownKill == null;
         }
 
         private async Task _GameEnd(string gameId, string winningTeam)
@@ -463,8 +494,9 @@ namespace csharp_api.Services
             if (unconfirmedKills.Count > 0)
             {
                 // TODO Replace placeholder with something more meaningful
-                List<GamePlayerBasic> playersToConfirm = unconfirmedKills.Select(kill => {
-                    return new GamePlayerBasic(kill.VictimId, kill.VictimName, ":)" );
+                List<GamePlayerBasic> playersToConfirm = unconfirmedKills.Select(kill =>
+                {
+                    return new GamePlayerBasic(kill.VictimId, kill.VictimName, ":)");
                 }).ToList();
 
                 await _messageService.SendConfirmKills(gameId, playersToConfirm);
@@ -511,6 +543,23 @@ namespace csharp_api.Services
             {
                 return "NONE";
             }
+        }
+
+        public async Task<List<GamePlayerBasic>> GetWaitingKillConfirmation(string gameId)
+        {
+            var gameKills = await _database.GameGetKills(gameId);
+
+            List<GamePlayerBasic> awaitingPlayers = new List<GamePlayerBasic>();
+
+            gameKills.ForEach(kill =>
+            {
+                if (kill.KillerId == "UNKNOWN")
+                {
+                    awaitingPlayers.Add(new GamePlayerBasic(kill.VictimId, kill.VictimName, ":)"));
+                }
+            });
+
+            return awaitingPlayers;
         }
     }
 }

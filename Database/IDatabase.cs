@@ -40,5 +40,6 @@ namespace csharp_api.Database
         Task GamePlayerSetReady(string lobbyCode, string userId);
         Task GamePlayerSetUnready(string lobbyCode, string userId);
         Task GamePlayerDie(string gameId, GamePlayer victim, GamePlayer killer);
+        Task GameConfirmKiller(string gameId, GamePlayer victim, GamePlayer killer);
     }
 }

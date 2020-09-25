@@ -35,6 +35,7 @@ namespace csharp_api.Database.DynamoDB
         public async Task<List<GamePlayer>> GameGetPlayers(string gameId)
         {
             // TODO Paginate
+            // TODO Game status option
             QueryResponse playerQuery = await _client.QueryAsync(new QueryRequest
             {
                 TableName = _tableName,
@@ -397,6 +398,42 @@ namespace csharp_api.Database.DynamoDB
                     // Analyzer information
                     { "GSI1-PK", new AttributeValue($"GAME#{gameId}") },
                     { "GSI1-SK", new AttributeValue(victim.AnalyzerCode) }
+                }
+            });
+        }
+
+        public async Task GameConfirmKiller(string gameId, GamePlayer victim, GamePlayer killer)
+        {
+            bool wasTeamKill = false;
+            if (victim.Role == killer.Role)
+            {
+                wasTeamKill = true;
+            }
+            else if (victim.Role == "INNOCENT" && killer.Role == "DETECTIVE")
+            {
+                wasTeamKill = true;
+            }
+            else if (victim.Role == "DETECTIVE" && killer.Role == "INNOCENT")
+            {
+                wasTeamKill = true;
+            }
+
+            // Update the kill log
+            await _client.UpdateItemAsync(new UpdateItemRequest
+            {
+                TableName = _tableName,
+                Key = new Dictionary<string, AttributeValue>
+                {
+                    { "pk", new AttributeValue($"GAME#{gameId}") },
+                    { "sk", new AttributeValue($"KILL#UNKNOWN#{victim.UserId}") },
+                },
+                UpdateExpression = "SET sk = :killSK, wasTeamKill = :wasTeamKill, killerName = :killerName, killerId = :killerId",
+                ExpressionAttributeValues = new Dictionary<string, AttributeValue>
+                {
+                    { ":killSK", new AttributeValue($"KILL#{killer.UserId}#{victim.UserId}") },
+                    { ":wasTeamKill", new AttributeValue { BOOL = wasTeamKill } },
+                    { ":killerId", new AttributeValue(killer.UserId) },
+                    { ":killerName", new AttributeValue(killer.DisplayName) },
                 }
             });
         }

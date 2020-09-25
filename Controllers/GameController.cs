@@ -294,5 +294,19 @@ namespace csharp_api.Controllers
                 return BadRequest(new APIError("An unknown error occurred", "ERR_UNKNOWN"));
             }
         }
+
+        [Authorize(Policy = "UserOnly")]
+        [HttpGet("{gameId}/waiting_kill_confirmation")]
+        public async Task<IActionResult> GetWaitingKillConfirmation([FromRoute] string gameId)
+        {
+            try
+            {
+                return Ok(await _gameService.GetWaitingKillConfirmation(gameId));
+            }
+            catch (Exception)
+            {
+                return BadRequest(new APIError("An unknown error occurred", "ERR_UNKNOWN"));
+            }
+        }
     }
 }

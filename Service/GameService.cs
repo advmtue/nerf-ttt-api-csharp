@@ -405,7 +405,7 @@ namespace csharp_api.Services
             // Check that the game is in INGAME phase
             GameMetadata gameInfo = await _database.GetGame(gameCode);
 
-            if (gameInfo.Status != "INGAME" || gameInfo.Status != "POSTPENDING")
+            if (gameInfo.Status != "INGAME" && gameInfo.Status != "POSTPENDING")
             {
                 throw new GameNotInProgressException();
             }

@@ -1,27 +1,71 @@
 using System;
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
-using Amazon.DynamoDBv2.Model;
-using csharp_api.Model.User;
+using csharp_api.Model.Player;
+using csharp_api.Model.Game.Kill;
 
 namespace csharp_api.Model.Game
 {
-    public class GameMetadata
+    public enum Status
+    {
+        LOBBY,
+        PREGAME,
+        INGAME,
+        POSTPENDING,
+        POSTGAME,
+    }
+
+    public static class StatusName
+    {
+        public const string Lobby = "LOBBY";
+        public const string Pregame = "PREGAME";
+        public const string Ingame = "INGAME";
+        public const string PostPending = "POSTPENDING";
+        public const string Postgame = "POSTGAME";
+
+        public static string Get(Status status)
+        {
+            switch (status)
+            {
+                case Status.LOBBY:
+                    return StatusName.Lobby;
+                case Status.PREGAME:
+                    return StatusName.Pregame;
+                case Status.INGAME:
+                    return StatusName.Ingame;
+                case Status.POSTPENDING:
+                    return StatusName.PostPending;
+                case Status.POSTGAME:
+                    return StatusName.Postgame;
+                default:
+                    throw new ArgumentException();
+            }
+        }
+
+        public static Status ToStatus(string status)
+        {
+            switch (status)
+            {
+                case StatusName.Lobby:
+                    return Status.LOBBY;
+                case StatusName.Pregame:
+                    return Status.PREGAME;
+                case StatusName.Ingame:
+                    return Status.INGAME;
+                case StatusName.PostPending:
+                    return Status.POSTPENDING;
+                case StatusName.Postgame: 
+                    return Status.POSTGAME;
+                default:
+                    throw new ArgumentException();
+            }
+        }
+    }
+
+    public class GameInfo
     {
         [JsonPropertyName("code")]
         public string Code { get; set; }
-
-        [JsonPropertyName("dateCreated")]
-        public string DateCreated { get; set; }
-
-        [JsonPropertyName("dateLaunched")]
-        public string DateLaunched { get; set; }
-
-        [JsonPropertyName("dateStarted")]
-        public string DateStarted { get; set; }
-
-        [JsonPropertyName("dateEnded")]
-        public string DateEnded { get; set; }
 
         [JsonPropertyName("ownerId")]
         public string OwnerId { get; set; }
@@ -30,178 +74,98 @@ namespace csharp_api.Model.Game
         public string OwnerName { get; set; }
 
         [JsonPropertyName("status")]
-        public string Status { get; set; }
+        public string StatusName { get => Game.StatusName.Get(Status); }
 
-        [JsonPropertyName("winningTeam")]
-        public string WinningTeam { get; set; }
+        [JsonIgnore]
+        public Status Status { get; set; }
+
+        // Timestamps
+        [JsonPropertyName("dateLaunched")]
+        public string DateLaunched { get; set; }
+
+        [JsonPropertyName("dateStarted")]
+        public string DateStarted { get; set; }
+
+        [JsonPropertyName("dateCreated")]
+        public string DateCreated { get; set; }
+
+        [JsonPropertyName("dateEnded")]
+        public string DateEnded { get; set; }
 
         [JsonPropertyName("nextGameCode")]
         public string NextGameCode { get; set; }
 
-        public GameMetadata() { }
+        [JsonPropertyName("winningTeam")]
+        public string WinningTeam { get; set; }
 
-        // Create a new Game using an ownerProfile and code
-        public GameMetadata(Profile ownerProfile, string code)
+        public GameInfo() { }
+
+        public GameInfo(GameInfo info)
         {
-            this.Code = code;
-            this.DateCreated = DateTimeOffset.Now.ToUnixTimeMilliseconds().ToString();
-            this.OwnerName = ownerProfile.DisplayName;
-            this.OwnerId = ownerProfile.UserId;
-            this.Status = "LOBBY";
-        }
-
-        // Marshall from a database query
-        public GameMetadata(Dictionary<string, AttributeValue> item)
-        {
-            this.Code = item["pk"].S.Split("#")[1];
-            this.DateCreated = item["dateCreated"].N;
-            this.OwnerId = item["GSI1-SK"].S;
-            this.OwnerName = item["ownerName"].S;
-            this.Status = item["GSI1-PK"].S;
-
-            // May be null
-            // TODO See if there's a cleaner way of retrieving this
-            this.DateLaunched = item.ContainsKey("dateLaunched") ? item["dateLaunched"].N : null;
-            this.DateStarted = item.ContainsKey("dateStarted") ? item["dateStarted"].N : null;
-            this.DateEnded = item.ContainsKey("dateEnded") ? item["dateEnded"].N : null;
-            this.WinningTeam = item.ContainsKey("winningTeam") ? item["winningTeam"].S : null;
-            this.NextGameCode = item.ContainsKey("nextGameCode") ? item["nextGameCode"].S : null;
+            Code = info.Code;
+            OwnerId = info.OwnerId;
+            OwnerName = info.OwnerName;
+            Status = info.Status;
+            DateCreated = info.DateCreated;
+            DateLaunched = info.DateLaunched;
+            DateStarted = info.DateStarted;
+            DateEnded = info.DateEnded;
+            NextGameCode = info.NextGameCode;
+            WinningTeam = info.WinningTeam;
         }
     }
 
-    public class GamePlayer
+    public class LobbyInfo : GameInfo
     {
-        [JsonPropertyName("userId")]
-        public string UserId { get; set; }
+        [JsonPropertyName("lobbyPlayers")]
+        public List<LobbyPlayer> Players { get; set; }
 
-        [JsonPropertyName("displayName")]
-        public string DisplayName { get; set; }
-
-        [JsonPropertyName("role")]
-        public string Role { get; set; }
-
-        [JsonPropertyName("isAlive")]
-        public bool IsAlive { get; set; }
-
-        [JsonPropertyName("analyzerCode")]
-        public string AnalyzerCode { get; set; }
-
-        [JsonPropertyName("scansRemaining")]
-        public int ScansRemaining { get; set; }
-
-        [JsonPropertyName("lastScanTime")]
-        public string LastScanTime { get; set; }
-
-        [JsonPropertyName("ready")]
-        public bool IsReady { get; set; }
-
-        public GamePlayer() { }
-
-        public GamePlayer Clone()
-        {
-            return new GamePlayer
-            {
-                UserId = this.UserId,
-                DisplayName = this.DisplayName,
-                Role = this.Role,
-                IsAlive = this.IsAlive,
-                AnalyzerCode = this.AnalyzerCode,
-                ScansRemaining = this.ScansRemaining,
-                LastScanTime = this.LastScanTime
-            };
-        }
-
-        public GamePlayer(Dictionary<string, AttributeValue> item)
-        {
-            this.UserId = item["sk"].S.Split("#")[1];
-            this.DisplayName = item["displayName"].S;
-            this.IsReady = item["ready"].BOOL;
-
-            // Potentially null
-            this.AnalyzerCode = item.ContainsKey("analyzerCode") ? item["analyzerCode"].S : null;
-            this.Role = item.ContainsKey("role") ? item["role"].S : null;
-            this.IsAlive = item.ContainsKey("alive") ? item["alive"].BOOL : false;
-            this.ScansRemaining = item.ContainsKey("scansRemaining") ? Int32.Parse(item["scansRemaining"].N) : 0;
-            this.LastScanTime = item.ContainsKey("lastScanTime") ? item["lastScanTime"].N : null;
-        }
+        // Baseclass constructor
+        public LobbyInfo(GameInfo info) : base(info) { }
     }
 
-    // Simple DTO for player display
-    // TODO Add user id
-    public class GamePlayerBasic
+    public class PregameInfo : GameInfo
     {
-        [JsonPropertyName("userId")]
-        public string UserId { get; set; }
-
-        [JsonPropertyName("name")]
-        public string Name { get; set; }
-
-        [JsonPropertyName("role")]
-        public string Role { get; set; }
-
-        public GamePlayerBasic(string userId, string name, string role)
-        {
-            UserId = userId;
-            Name = name;
-            Role = role;
-        }
-    }
-
-    // DTO for a localPlayer
-    public class GamePlayerInfo
-    {
-
-        [JsonPropertyName("role")]
-        public string Role { get; set; }
-
-        [JsonPropertyName("analyzerCode")]
-        public string AnalyzerCode { get; set; }
-
-        [JsonPropertyName("scansRemaining")]
-        public int ScansRemaining { get; set; }
-
-        [JsonPropertyName("lastScanTime")]
-        public string LastScanTime { get; set; }
-
-        [JsonPropertyName("players")]
+        [JsonPropertyName("gamePlayers")]
         public List<GamePlayerBasic> Players { get; set; }
 
-        [JsonPropertyName("alive")]
-        public bool Alive { get; set; }
+        [JsonPropertyName("localPlayer")]
+        public GamePlayer LocalPlayer { get; set; }
 
-        public GamePlayerInfo() { }
+        // Baseclass constructor
+        public PregameInfo(GameInfo info) : base(info) { }
     }
 
-    public class GameKill
+    public class IngameInfo : GameInfo
     {
-        [JsonPropertyName("killerId")]
-        public string KillerId { get; set; }
+        [JsonPropertyName("gamePlayers")]
+        public List<GamePlayerBasic> Players { get; set; }
 
-        [JsonPropertyName("killerName")]
-        public string KillerName { get; set; }
+        [JsonPropertyName("localPlayer")]
+        public GamePlayer LocalPlayer { get; set; }
 
-        [JsonPropertyName("victimId")]
-        public string VictimId { get; set; }
+        // Baseclass constructor
+        public IngameInfo(GameInfo info) : base(info) { }
+    }
 
-        [JsonPropertyName("victimName")]
-        public string VictimName { get; set; }
+    public class PostPendingInfo : GameInfo
+    {
+        [JsonPropertyName("waitingFor")]
+        public List<GamePlayerBasic> WaitingFor { get; set; }
 
-        [JsonPropertyName("wasTeamKill")]
-        public bool WasTeamKill { get; set; }
+        [JsonPropertyName("gamePlayers")]
+        public List<GamePlayerBasic> Players { get; set; }
 
-        [JsonPropertyName("time")]
-        public string Time { get; set; }
+        // Baseclass constructor
+        public PostPendingInfo(GameInfo info) : base(info) { }
+    }
 
-        public GameKill() {}
+    public class PostGameInfo : GameInfo
+    {
+        [JsonPropertyName("kills")]
+        public List<GameKill> GameKills { get; set; }
 
-        public GameKill(Dictionary<string, AttributeValue> item)
-        {
-            KillerId = item["killerId"].S;
-            KillerName = item["killerName"].S;
-            VictimId = item["victimId"].S;
-            VictimName = item["victimName"].S;
-            WasTeamKill = item["wasTeamKill"].BOOL;
-            Time = item["time"].S;
-        }
+        // Baseclass constructor
+        public PostGameInfo(GameInfo info) : base(info) { }
     }
 }

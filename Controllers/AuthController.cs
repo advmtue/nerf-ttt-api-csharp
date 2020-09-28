@@ -29,16 +29,13 @@ namespace csharp_api.Controllers
         }
 
         [HttpGet("discord")]
-        [ProducesResponseType(200)]
-        [ProducesResponseType(400)]
         [AllowAnonymous]
         public async Task<IActionResult> GetDiscordAuth([FromQuery(Name = "code")] string code)
         {
-            string token;
             try
             {
                 Profile profile = await _discord.Authenticate(code);
-                token = _tokenManager.CreateRefreshToken(profile);
+                return Ok(new { refreshToken = _tokenManager.CreateRefreshToken(profile)});
             }
             catch (AuthProviderErrorException)
             {
@@ -52,9 +49,6 @@ namespace csharp_api.Controllers
             {
                 return BadRequest(new APIError("An unknown error occurred.", "ERR_UNKNOWN"));
             }
-
-            // Return refresh token
-            return Ok(new { refreshToken = token });
         }
 
         [HttpPost("token")]
@@ -63,15 +57,13 @@ namespace csharp_api.Controllers
         {
             try
             {
-                string accessToken = await _tokenManager.CreateAccessToken(request.refreshToken);
-                return Ok(new { accessToken = accessToken });
+                return Ok(new { accessToken = await _tokenManager.CreateAccessToken(request.refreshToken) });
             }
             catch (Exception)
             {
-                // TODO Token validation and database exception differences
+                // FIXME Token validation and database exception differences
                 return BadRequest(new APIError("An unknown error occurred.", "ERR_UNKNOWN"));
             }
-
         }
     }
 }

@@ -6,7 +6,8 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using System.Text.Json;
 using csharp_api.Model.User;
-using csharp_api.Model.Game;
+using csharp_api.Model.Player;
+using csharp_api.Model.Game.Kill;
 
 namespace csharp_api.Services.Message
 {

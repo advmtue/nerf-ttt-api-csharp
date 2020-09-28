@@ -5,7 +5,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 
 using Amazon.DynamoDBv2.Model;
-using csharp_api.Model.Game;
 using csharp_api.Transfer.Response.Error;
 using csharp_api.Services;
 using csharp_api.Database;
@@ -36,7 +35,7 @@ namespace csharp_api.Controllers
 
             try
             {
-                return Ok(await _gameService.Create(userId));
+                return Ok(new { code = await _gameService.CreateGame(userId) });
             }
             catch (UserNotFoundException)
             {
@@ -63,30 +62,12 @@ namespace csharp_api.Controllers
         {
             try
             {
-                return Ok(await _gameService.Get(gameId));
+                string userId = HttpContext.User.Identity.Name;
+                return Ok(await _gameService.GetGameInfo(gameId, userId));
             }
             catch (GameNotFoundException)
             {
                 return BadRequest(new APIError("No game found with matching ID", "ERR_GAME_NOT_FOUND"));
-            }
-            catch (Exception)
-            {
-                return BadRequest(new APIError("An unknown error occurred", "ERR_UNKNOWN"));
-            }
-        }
-
-        [Authorize(Policy = "UserOnly")]
-        [HttpGet("{gameId}/info")]
-        public async Task<IActionResult> GetInfo([FromRoute] string gameId)
-        {
-            try
-            {
-                string userId = HttpContext.User.Identity.Name;
-                return Ok(await _gameService.GetFilteredInfo(gameId, userId));
-            }
-            catch (PlayerNotInGameException)
-            {
-                return BadRequest(new APIError("You are not a player in the requested game", "ERR_PLAYER_NOT_IN_GAME"));
             }
             catch (Exception)
             {
@@ -124,7 +105,7 @@ namespace csharp_api.Controllers
 
             try
             {
-                await _gameService.Launch(code, userId);
+                await _gameService.LaunchGame(code, userId);
 
                 return Ok();
             }
@@ -164,24 +145,6 @@ namespace csharp_api.Controllers
             catch (LobbyNotFoundException)
             {
                 return BadRequest(new APIError("Lobby not found", "ERR_LOBBY_NOT_FOUND"));
-            }
-        }
-
-        [Authorize(Policy = "UserOnly")]
-        [HttpGet("{code}/players")]
-        public async Task<IActionResult> GetPlayers([FromRoute] string code)
-        {
-            try
-            {
-                return Ok(await _gameService.GetGamePlayers(code));
-            }
-            catch (LobbyNotFoundException)
-            {
-                return BadRequest(new APIError("Lobby not found", "ERR_LOBBY_NOT_FOUND"));
-            }
-            catch (Exception)
-            {
-                return BadRequest(new APIError("An unknown error occurred", "ERR_UNKNOWN"));
             }
         }
 
@@ -288,20 +251,6 @@ namespace csharp_api.Controllers
             catch (UserNotFoundException)
             {
                 return BadRequest(new APIError("Specified killer is not in this game", "ERR_KILLER_NOT_FOUND"));
-            }
-            catch (Exception)
-            {
-                return BadRequest(new APIError("An unknown error occurred", "ERR_UNKNOWN"));
-            }
-        }
-
-        [Authorize(Policy = "UserOnly")]
-        [HttpGet("{gameId}/waiting_kill_confirmation")]
-        public async Task<IActionResult> GetWaitingKillConfirmation([FromRoute] string gameId)
-        {
-            try
-            {
-                return Ok(await _gameService.GetWaitingKillConfirmation(gameId));
             }
             catch (Exception)
             {

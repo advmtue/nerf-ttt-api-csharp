@@ -4,6 +4,8 @@ using System.Threading.Tasks;
 using csharp_api.Transfer.Response.Discord;
 using csharp_api.Model.User;
 using csharp_api.Model.Game;
+using csharp_api.Model.Player;
+using csharp_api.Model.Game.Kill;
 
 namespace csharp_api.Database
 {
@@ -17,29 +19,29 @@ namespace csharp_api.Database
         // Registration
         Task<Profile> CreateUserByDiscord(DiscordUser discordUser);
         Task RegisterUser(string userId, string name);
-
-        // Get information
         Task<Profile> GetUser(string userId);
         Task<Profile> GetUserByDiscord(DiscordUser discordUser);
-        Task<GameMetadata> GetGame(string lobbyCode);
-        Task<List<GamePlayer>> GameGetPlayers(string lobbyCode);
-        Task<GamePlayer> GameGetPlayer(string lobbyCode, string userId);
-        Task<List<GameKill>> GameGetKills(string lobbyCode);
+
+        // Get game information
+        Task<GameInfo> GetGameInfo(string gameCode);
+        Task<List<GamePlayer>> GameGetPlayers(string gameCode);
+        Task<List<LobbyPlayer>> GetLobbyPlayers(string gameCode);
+        Task<GamePlayer> GameGetPlayer(string gameCode, string userId);
 
         // Game updates
-        Task CreateGame(GameMetadata lobbyInfo);
-        Task LaunchGame(string gameId, string callingPlayerId, List<GamePlayer> playerInfo);
-        Task StartGame(string gameId, string callingPlayerId);
-        Task EndGamePostPending(string gameId, string winningTeam);
-        Task EndGameComplete(string gameId);
+        Task CreateGame(string gameCode, Profile ownerProfile);
+        Task LaunchGame(string gameCode, string callingPlayerId, List<GamePlayer> playerInfo);
+        Task StartGame(string gameCode, string callingPlayerId);
+        Task EndGamePostPending(string gameCode, string winningTeam);
+        Task EndGameComplete(string gameCode);
 
         // Game actions
-        Task AdminCloseGame(string lobbyCode);
-        Task GamePlayerJoin(string lobbyCode, Profile userProfile);
-        Task GamePlayerLeave(string lobbyCode, string userId);
-        Task GamePlayerSetReady(string lobbyCode, string userId);
-        Task GamePlayerSetUnready(string lobbyCode, string userId);
-        Task GamePlayerDie(string gameId, GamePlayer victim, GamePlayer killer);
-        Task GameConfirmKiller(string gameId, GamePlayer victim, GamePlayer killer);
+        Task AdminCloseGame(string gameCode);
+        Task GamePlayerJoin(string gameCode, Profile userProfile);
+        Task GamePlayerLeave(string gameCode, string userId);
+        Task GamePlayerSetReady(string gameCode, string userId);
+        Task GamePlayerSetUnready(string gameCode, string userId);
+        Task GamePlayerDie(string gameCode, GamePlayer victim, GamePlayer killer);
+        Task GameConfirmKiller(string gameCode, GamePlayer victim, GamePlayer killer);
     }
 }

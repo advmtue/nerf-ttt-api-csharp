@@ -65,5 +65,19 @@ namespace csharp_api.Controllers
                 return BadRequest(new APIError("An unknown error occurred.", "ERR_UNKNOWN"));
             }
         }
+
+        [HttpGet("{userId}/token")]
+        [Authorize(Policy = "AdminOnly")]
+        public async Task<IActionResult> GetUserRefreshToken([FromRoute] string userId)
+        {
+            try 
+            {
+                Profile profile = await _database.GetUser(userId);
+                return Ok(new { refreshToken = _tokenManager.CreateRefreshToken(profile) } );
+            } catch (Exception err)
+            {
+                return BadRequest(new APIError(err.Message, "I_DONT_KNOW_LMAO"));
+            }
+        }
     }
 }

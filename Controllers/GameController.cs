@@ -248,6 +248,10 @@ namespace csharp_api.Controllers
             {
                 return BadRequest(new APIError("You are already dead", "ERR_PLY_ALREADY_DEAD"));
             }
+            catch (PlayerIsAliveException)
+            {
+                return BadRequest(new APIError("You cannot confirm your killer if you have not died", "ERR_PLY_IS_ALIVE"));
+            }
             catch (UserNotFoundException)
             {
                 return BadRequest(new APIError("Specified killer is not in this game", "ERR_KILLER_NOT_FOUND"));

@@ -66,9 +66,11 @@ namespace csharp_api.Model.Player
 
     public class GamePlayerBasic : Player
     {
-        [JsonPropertyName("role")]
+        [JsonIgnore]
         public Role Role { get; set; }
 
+        [JsonPropertyName("role")]
+        public string RoleName { get => RoleInfo.GetName(Role); }
         public GamePlayerBasic(Player player) : base(player) { }
 
         public GamePlayerBasic() : base() { }

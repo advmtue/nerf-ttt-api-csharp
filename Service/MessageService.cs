@@ -86,7 +86,7 @@ namespace csharp_api.Services.Message
 
         public async Task GameStart(string gameId)
         {
-            var data = JsonSerializer.Serialize(new { gameId = gameId });
+            var data = JsonSerializer.Serialize(new { startTime = DateTimeOffset.Now.ToUnixTimeMilliseconds().ToString() });
             var uri = $"{_socketURI}/game/{gameId}/started";
 
             await _MakeRequest(uri, data);
@@ -107,6 +107,13 @@ namespace csharp_api.Services.Message
             var uri = $"{_socketURI}/game/{gameId}/ended";
 
             await _MakeRequest(uri, data);
+        }
+
+        public async Task PlayerConfirmKill(string gameId, string userId)
+        {
+            var uri = $"{_socketURI}/game/{gameId}/confirmKill/{userId}";
+
+            await _client.GetAsync(uri);
         }
     }
 }

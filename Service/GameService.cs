@@ -22,6 +22,7 @@ namespace csharp_api.Services
     public class GameInProgressException : Exception { }
     public class GameNotInProgressException : Exception { }
     public class PlayerIsDeadException : Exception { }
+    public class PlayerIsAliveException : Exception { }
 
     public class GameService
     {
@@ -84,6 +85,9 @@ namespace csharp_api.Services
                     Role = role,
                     IsAlive = true
                 });
+
+                // Remove the player from pool
+                lobbyPlayers.RemoveAt(playerIdx);
             }
 
             return gamePlayers;
@@ -166,7 +170,7 @@ namespace csharp_api.Services
         {
             return new PostGameInfo(gameInfo)
             {
-                GameKills = await _GetGameKills(gameInfo.Code)     
+                GameKills = await _GetGameKills(gameInfo.Code)
             };
         }
 
@@ -186,7 +190,8 @@ namespace csharp_api.Services
 
             return players
                 .FindAll(player => player.KillerId != null)
-                .Select(victim => {
+                .Select(victim =>
+                {
                     // Killer can be null here, handle UNKNOWN
                     GamePlayer killer = players.Find(pl => pl.UserId == victim.KillerId);
 
@@ -455,7 +460,7 @@ namespace csharp_api.Services
             // Check game is in lobby phase
             GameInfo gameInfo = await _database.GetGameInfo(gameCode);
 
-            if (gameInfo.Status != Status.LOBBY) 
+            if (gameInfo.Status != Status.LOBBY)
             {
                 throw new GameInProgressException();
             }
@@ -482,41 +487,28 @@ namespace csharp_api.Services
         {
             // TODO Player cannot kill themselves (Anti-jordan mechanism)
 
-            // Check that the game is in INGAME phase
+            GamePlayer callingPlayer = await _database.GameGetPlayer(gameCode, deadPlayerId);
             GameInfo gameInfo = await _database.GetGameInfo(gameCode);
 
-            if (gameInfo.Status != Status.INGAME && gameInfo.Status != Status.POSTPENDING)
-            {
-                throw new GameNotInProgressException();
-            }
-
-            // Check that the calling player is not already dead
-            // Can't use condition check because we still need player information for the kill log
-            GamePlayer callingPlayer = await _database.GameGetPlayer(gameCode, deadPlayerId);
-
-            if (!callingPlayer.IsAlive)
-            {
-                throw new PlayerIsDeadException();
-            }
-
-            // Check that the killerId is in the lobby
-            // This should throw a UserNotFoundException if the player isn't in the lobby
-            // Defaults to an unknown killer
-            GamePlayer killer = new GamePlayer() { UserId = "UNKNOWN", DisplayName = "UNKNOWN", Role = Role.INNOCENT };
-            if (killerId != "UNKNOWN")
-            {
-                killer = await _database.GameGetPlayer(gameCode, killerId);
-            }
-            else if (gameInfo.Status != Status.INGAME)
-            {
-                // Can't set unknown killer post game
-                throw new UserNotFoundException();
-            }
-
-
-            // set player dead and add kill log
             if (gameInfo.Status == Status.INGAME)
             {
+                // INGAME Phase
+
+                // Check that the calling player is not already dead
+                // Can't use condition check because we still need player information for the kill log
+                if (!callingPlayer.IsAlive)
+                {
+                    throw new PlayerIsDeadException();
+                }
+
+                // Pull killer information or use UNKNOWN killer
+                GamePlayer killer = new GamePlayer() { UserId = "UNKNOWN", DisplayName = "UNKNOWN", Role = Role.INNOCENT };
+                if (killerId != "UNKNOWN")
+                {
+                    killer = await _database.GameGetPlayer(gameCode, killerId);
+                }
+
+                // Offically kill the player
                 await _database.GamePlayerDie(gameCode, callingPlayer, killer);
 
                 // check win conditions
@@ -531,15 +523,36 @@ namespace csharp_api.Services
                     await _GameEnd(gameCode, winningTeam);
                 }
             }
-            else
+            else if (gameInfo.Status == Status.POSTPENDING)
             {
+                // Cannot use unknown killer in postpending confirmation page
+                if (killerId == "UNKNOWN")
+                {
+                    throw new UserNotFoundException();
+                }
+
+                // Alive players cannot confirm their death in postpending
+                if (callingPlayer.IsAlive)
+                {
+                    throw new PlayerIsAliveException();
+                }
+
+                GamePlayer killer = await _GetGamePlayer(gameCode, killerId);
                 await _database.GameConfirmKiller(gameCode, callingPlayer, killer);
+                await _messageService.PlayerConfirmKill(gameCode, callingPlayer.UserId);
 
                 if (await _CheckAllDeathsConfirmed(gameCode))
                 {
                     // Enter POSTGAME
                     await _database.EndGameComplete(gameCode);
+
+                    // Pull winning team and kills
+                    await _messageService.GameEnd(gameCode, gameInfo.WinningTeam, await _GetGameKills(gameCode));
                 }
+            }
+            else
+            {
+                throw new GameNotInProgressException();
             }
         }
 
@@ -601,6 +614,8 @@ namespace csharp_api.Services
 
             foreach (GamePlayer player in players)
             {
+                if (!player.IsAlive) continue;
+
                 if (player.Role == Role.INNOCENT || player.Role == Role.DETECTIVE)
                 {
                     innocentTeamAlive++;

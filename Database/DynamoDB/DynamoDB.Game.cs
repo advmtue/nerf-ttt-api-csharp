@@ -243,12 +243,9 @@ namespace csharp_api.Database.DynamoDB
                 });
             }
 
-            // Perform player updates
-            while (playerUpdates.Count > 0)
-            {
-                await _client.UpdateItemAsync(playerUpdates[0]);
-                playerUpdates.RemoveAt(0);
-            }
+            playerUpdates.ForEach(async update => {
+                await _client.UpdateItemAsync(update);
+            });
         }
 
         public async Task StartGame(string gameId, string callingPlayerId)
@@ -477,15 +474,13 @@ namespace csharp_api.Database.DynamoDB
                 Key = new Dictionary<string, AttributeValue>
                 {
                     { "pk", new AttributeValue($"GAME#{gameId}") },
-                    { "sk", new AttributeValue($"KILL#UNKNOWN#{victim.UserId}") },
+                    { "sk", new AttributeValue($"PLAYER#{victim.UserId}") },
                 },
-                UpdateExpression = "SET sk = :killSK, wasTeamKill = :wasTeamKill, killerName = :killerName, killerId = :killerId",
+                UpdateExpression = "SET wasTeamKill = :wasTeamKill, killerId = :killerId",
                 ExpressionAttributeValues = new Dictionary<string, AttributeValue>
                 {
-                    { ":killSK", new AttributeValue($"KILL#{killer.UserId}#{victim.UserId}") },
                     { ":wasTeamKill", new AttributeValue { BOOL = wasTeamKill } },
                     { ":killerId", new AttributeValue(killer.UserId) },
-                    { ":killerName", new AttributeValue(killer.DisplayName) },
                 }
             });
         }

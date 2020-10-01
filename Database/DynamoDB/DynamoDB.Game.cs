@@ -1,7 +1,5 @@
-using System.Linq;
-using System.Threading;
-using System.Collections.ObjectModel;
 using System;
+using System.Linq;
 using System.Threading.Tasks;
 using System.Collections.Generic;
 using csharp_api.Model.Game;
@@ -9,7 +7,6 @@ using Amazon.DynamoDBv2.Model;
 using csharp_api.Model.User;
 using csharp_api.Model.Player;
 using csharp_api.Model.Roles;
-using csharp_api.Model.Game.Kill;
 
 namespace csharp_api.Database.DynamoDB
 {
@@ -410,21 +407,6 @@ namespace csharp_api.Database.DynamoDB
 
         public async Task GamePlayerDie(string gameId, GamePlayer victim, GamePlayer killer)
         {
-            // Calculate team kill
-            bool wasTeamKill = false;
-            if (victim.Role == killer.Role)
-            {
-                wasTeamKill = true;
-            }
-            else if (victim.Role == Role.INNOCENT && killer.Role == Role.DETECTIVE)
-            {
-                wasTeamKill = true;
-            }
-            else if (victim.Role == Role.DETECTIVE && killer.Role == Role.INNOCENT)
-            {
-                wasTeamKill = true;
-            }
-
             await _client.UpdateItemAsync(new UpdateItemRequest
             {
                 TableName = _tableName,
@@ -453,20 +435,6 @@ namespace csharp_api.Database.DynamoDB
 
         public async Task GameConfirmKiller(string gameId, GamePlayer victim, GamePlayer killer)
         {
-            bool wasTeamKill = false;
-            if (victim.Role == killer.Role)
-            {
-                wasTeamKill = true;
-            }
-            else if (victim.Role == Role.INNOCENT && killer.Role == Role.DETECTIVE)
-            {
-                wasTeamKill = true;
-            }
-            else if (victim.Role == Role.DETECTIVE && killer.Role == Role.INNOCENT)
-            {
-                wasTeamKill = true;
-            }
-
             // Update the kill log
             await _client.UpdateItemAsync(new UpdateItemRequest
             {
@@ -476,10 +444,9 @@ namespace csharp_api.Database.DynamoDB
                     { "pk", new AttributeValue($"GAME#{gameId}") },
                     { "sk", new AttributeValue($"PLAYER#{victim.UserId}") },
                 },
-                UpdateExpression = "SET wasTeamKill = :wasTeamKill, killerId = :killerId",
+                UpdateExpression = "SET killerId = :killerId",
                 ExpressionAttributeValues = new Dictionary<string, AttributeValue>
                 {
-                    { ":wasTeamKill", new AttributeValue { BOOL = wasTeamKill } },
                     { ":killerId", new AttributeValue(killer.UserId) },
                 }
             });

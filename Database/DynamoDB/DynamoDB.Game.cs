@@ -240,7 +240,8 @@ namespace csharp_api.Database.DynamoDB
                 });
             }
 
-            playerUpdates.ForEach(async update => {
+            playerUpdates.ForEach(async update =>
+            {
                 await _client.UpdateItemAsync(update);
             });
         }
@@ -282,7 +283,7 @@ namespace csharp_api.Database.DynamoDB
                     { "pk", new AttributeValue($"GAME#{gameId}" ) },
                     { "sk", new AttributeValue("metadata") }
                 },
-                UpdateExpression = "SET #status = :postpending, #winningTeam = :winningTeam",
+                UpdateExpression = "SET #status = :postpending, #winningTeam = :winningTeam, dateEnded = :dateNow",
                 ExpressionAttributeNames = new Dictionary<string, string>
                 {
                     { "#status", "GSI1-PK" },
@@ -292,7 +293,8 @@ namespace csharp_api.Database.DynamoDB
                 {
                     { ":postpending", new AttributeValue("POSTPENDING") },
                     { ":winningTeam", new AttributeValue(winningTeam) },
-                    { ":ingame", new AttributeValue("INGAME") }
+                    { ":ingame", new AttributeValue("INGAME") },
+                    { ":dateNow", new AttributeValue { N = DateTimeOffset.Now.ToUnixTimeMilliseconds().ToString() } }
                 },
                 ConditionExpression = "#status = :ingame",
             });
@@ -308,7 +310,7 @@ namespace csharp_api.Database.DynamoDB
                     { "pk", new AttributeValue($"GAME#{gameId}" )},
                     { "sk", new AttributeValue("metadata") }
                 },
-                UpdateExpression = "SET #status = :postgame",
+                UpdateExpression = "SET #status = :postgame, dateEnded = :dateNow",
                 ConditionExpression = "#status = :postpending",
                 ExpressionAttributeNames = new Dictionary<string, string>
                 {
@@ -317,7 +319,8 @@ namespace csharp_api.Database.DynamoDB
                 ExpressionAttributeValues = new Dictionary<string, AttributeValue>
                 {
                     { ":postgame", new AttributeValue("POSTGAME") },
-                    { ":postpending", new AttributeValue("POSTPENDING") }
+                    { ":postpending", new AttributeValue("POSTPENDING") },
+                    { ":dateNow", new AttributeValue { N = DateTimeOffset.Now.ToUnixTimeMilliseconds().ToString() } }
                 }
             });
         }

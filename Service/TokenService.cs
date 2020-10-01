@@ -80,6 +80,11 @@ namespace csharp_api.Services
 
         public async Task<string> CreateAccessToken(string refreshToken)
         {
+            return await CreateAccessTokenWithExpiry(refreshToken, DateTime.Now.AddHours(2));
+        }
+
+        public async Task<string> CreateAccessTokenWithExpiry(string refreshToken, DateTime expiry)
+        {
             // Validate the token
             JwtSecurityToken fullRefreshToken = ValidateToken(refreshToken);
 
@@ -96,7 +101,7 @@ namespace csharp_api.Services
 
             // Create an access token which is valid for 10 minutes
             // TODO Reduce token expiry time, currently set to a debug time for 2 hours
-            JwtPayload payload = _CreatePayload(claims, DateTime.Now.AddHours(2));
+            JwtPayload payload = _CreatePayload(claims, expiry);
 
             return _jwtHandler.WriteToken(new JwtSecurityToken(_jwtHeader, payload));
         }

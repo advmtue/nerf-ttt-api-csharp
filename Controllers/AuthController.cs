@@ -9,6 +9,7 @@ using csharp_api.Services.Discord;
 using csharp_api.Model.User;
 
 using csharp_api.Transfer.Response.Error;
+using csharp_api.Transfer.Response.Token;
 using csharp_api.Transfer.Request.Token;
 
 namespace csharp_api.Controllers
@@ -35,7 +36,7 @@ namespace csharp_api.Controllers
             try
             {
                 Profile profile = await _discord.Authenticate(code);
-                return Ok(new { refreshToken = _tokenManager.CreateRefreshToken(profile)});
+                return Ok(new { refreshToken = _tokenManager.CreateRefreshToken(profile) });
             }
             catch (AuthProviderErrorException)
             {
@@ -57,7 +58,20 @@ namespace csharp_api.Controllers
         {
             try
             {
-                return Ok(new { accessToken = await _tokenManager.CreateAccessToken(request.refreshToken) });
+                // TODO Review the amount of time an access token should live for
+                int accessTokenMinutes = 1;
+                DateTime expiryDate = DateTime.Now.AddMinutes(accessTokenMinutes);
+
+                AccessTokenResponse tokenResponse = new AccessTokenResponse
+                {
+                    token = await _tokenManager.CreateAccessTokenWithExpiry(request.refreshToken, expiryDate),
+                    token_type = "access",
+
+                    // ExpiresIn should be in seconds format, so multiply minutes by 60
+                    ExpiresIn = accessTokenMinutes * 60
+                };
+
+                return Ok(tokenResponse);
             }
             catch (Exception)
             {
@@ -70,11 +84,12 @@ namespace csharp_api.Controllers
         [Authorize(Policy = "AdminOnly")]
         public async Task<IActionResult> GetUserRefreshToken([FromRoute] string userId)
         {
-            try 
+            try
             {
                 Profile profile = await _database.GetUser(userId);
-                return Ok(new { refreshToken = _tokenManager.CreateRefreshToken(profile) } );
-            } catch (Exception err)
+                return Ok(new { refreshToken = _tokenManager.CreateRefreshToken(profile) });
+            }
+            catch (Exception err)
             {
                 return BadRequest(new APIError(err.Message, "I_DONT_KNOW_LMAO"));
             }

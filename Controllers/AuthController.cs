@@ -59,7 +59,7 @@ namespace csharp_api.Controllers
             try
             {
                 // TODO Review the amount of time an access token should live for
-                int accessTokenMinutes = 1;
+                int accessTokenMinutes = 240;
                 DateTime expiryDate = DateTime.Now.AddMinutes(accessTokenMinutes);
 
                 AccessTokenResponse tokenResponse = new AccessTokenResponse
